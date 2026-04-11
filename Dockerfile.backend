@@ -1,0 +1,49 @@
+# ============================================================
+# Dockerfile — Backend (Node.js + Express)
+# Multi-stage build para imagem de produção enxuta
+# ============================================================
+
+# ── Stage 1: Dependências ────────────────────────────────────
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+COPY backend/package*.json ./
+RUN npm ci --omit=dev
+
+# ── Stage 2: Build (gera Prisma client) ──────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY backend/package*.json ./
+RUN npm ci
+
+COPY backend/ .
+RUN npx prisma generate
+
+# ── Stage 3: Imagem final de produção ────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Cria usuário não-root para segurança
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser  --system --uid 1001 backend
+
+# Copia apenas o necessário
+COPY --from=deps    /app/node_modules ./node_modules
+COPY --from=builder /app/src          ./src
+COPY --from=builder /app/prisma       ./prisma
+COPY --from=builder /app/package.json ./package.json
+
+# Pasta de uploads (volume em produção deve apontar para S3 mount ou NFS)
+RUN mkdir -p uploads && chown backend:nodejs uploads
+
+USER backend
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:3001/health || exit 1
+
+CMD ["node", "src/server.js"]

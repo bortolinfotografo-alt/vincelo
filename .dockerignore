@@ -1,0 +1,37 @@
+# ── Git ────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── Dependências (reinstaladas no build) ──────────────────────
+node_modules
+backend/node_modules
+frontend/node_modules
+
+# ── Next.js cache e artefatos de dev ─────────────────────────
+frontend/.next/cache
+frontend/.next/server/chunks
+
+# ── Uploads locais (em prod → S3) ─────────────────────────────
+backend/uploads
+
+# ── Variáveis de ambiente (nunca incluir no Docker) ───────────
+.env
+.env.*
+!.env.example
+
+# ── Logs e temporários ────────────────────────────────────────
+*.log
+npm-debug.log*
+.npm
+
+# ── Testes e documentação ─────────────────────────────────────
+*.test.js
+*.spec.js
+coverage
+__tests__
+
+# ── IDE e SO ──────────────────────────────────────────────────
+.vscode
+.idea
+*.DS_Store
+Thumbs.db
