@@ -1,42 +1,57 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Eye, BadgeCheck, Pause, Play } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Eye, BadgeCheck, Pause, Play, Heart, Share2, Send } from 'lucide-react';
 import StoryProgressBar from './StoryProgressBar';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 const STORY_DURATION = 5000;
 
 export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
   const { user } = useAuth();
-  const [groupIndex, setGroupIndex] = useState(startGroupIndex);
-  const [storyIndex, setStoryIndex] = useState(0);
+  const [groupIndex, setGroupIndex]   = useState(startGroupIndex);
+  const [storyIndex, setStoryIndex]   = useState(0);
   const [showViewers, setShowViewers] = useState(false);
-  const [viewers, setViewers] = useState([]);
-  const [paused, setPaused] = useState(false);
-  const holdRef = useRef(false);
+  const [viewers, setViewers]         = useState([]);
+  const [paused, setPaused]           = useState(false);
+
+  // Like
+  const [liked, setLiked]       = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+
+  // Resposta por DM
+  const [replyText, setReplyText]       = useState('');
+  const [replyLoading, setReplyLoading] = useState(false);
+  const [replyFocused, setReplyFocused] = useState(false);
+
+  const holdRef  = useRef(false);
   const videoRef = useRef(null);
 
   const group = groups[groupIndex];
   const story = group?.stories[storyIndex];
 
-  // Pausa automática quando painel de viewers está aberto
-  const isPaused = paused || showViewers;
+  // Pausa quando viewers abertos, reply focado ou paused manual
+  const isPaused = paused || showViewers || replyFocused;
 
-  // Pausa/retoma o vídeo quando isPaused muda
+  // Sincroniza estado de like quando story muda
+  useEffect(() => {
+    if (!story) return;
+    setLiked(story.isLiked || false);
+    setLikeCount(story.likeCount || 0);
+  }, [story?.id]);
+
+  // Pausa/retoma vídeo com isPaused
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (isPaused) {
-      video.pause();
-    } else {
-      video.play().catch(() => {});
-    }
+    if (isPaused) video.pause();
+    else video.play().catch(() => {});
   }, [isPaused]);
 
-  // Registra visualizacao ao mudar de story
+  // Registra visualização ao mudar de story
   useEffect(() => {
     if (!story || !user) return;
     api.post(`/stories/${story.id}/view`).catch(() => {});
@@ -63,17 +78,14 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
   }, [storyIndex, groupIndex, groups]);
 
   // Clique na área de mídia: 35% esquerda = voltar, resto = avançar
-  // Ignora clique se foi um hold (touchend após pressionar)
   const handleAreaClick = (e) => {
     if (holdRef.current) return;
+    if (replyFocused) return; // não navega quando input está focado
     const { clientX, currentTarget } = e;
     const rect = currentTarget.getBoundingClientRect();
-    const relativeX = clientX - rect.left;
-    if (relativeX < rect.width * 0.35) goPrev();
+    if ((clientX - rect.left) < rect.width * 0.35) goPrev();
     else goNext();
   };
-
-  // ── Controles de pausa ──────────────────────────────────────
 
   // Desktop: botão play/pause
   const togglePause = (e) => {
@@ -81,13 +93,13 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     setPaused((p) => !p);
   };
 
-  // Mobile: pressionar e segurar pausa; soltar retoma
+  // Mobile: pressionar e segurar pausa
   const handleTouchStart = (e) => {
     holdRef.current = false;
     const timeout = setTimeout(() => {
       holdRef.current = true;
       setPaused(true);
-    }, 150); // 150ms de hold para diferenciar de tap
+    }, 150);
     e._holdTimeout = timeout;
   };
 
@@ -99,13 +111,66 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     }
   };
 
+  // Curtir story
+  const handleLike = async (e) => {
+    e.stopPropagation();
+    if (!user || !story) return;
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikeCount((c) => newLiked ? c + 1 : Math.max(0, c - 1));
+    try {
+      const res = await api.post(`/stories/${story.id}/like`);
+      setLiked(res.data.liked);
+      setLikeCount(res.data.likeCount);
+    } catch {
+      // revert
+      setLiked(!newLiked);
+      setLikeCount((c) => !newLiked ? c + 1 : Math.max(0, c - 1));
+    }
+  };
+
+  // Compartilhar — copia link do perfil do autor
+  const handleShare = (e) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/profile/${group.author.id}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url)
+        .then(() => toast.success('Link copiado!'))
+        .catch(() => toast.error('Não foi possível copiar o link'));
+    } else {
+      toast.error('Navegador não suporta cópia automática');
+    }
+  };
+
+  // Resposta privada → DM
+  const handleReply = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!replyText.trim() || !user || !story) return;
+
+    setReplyLoading(true);
+    try {
+      await api.post('/chat', {
+        receiverId: story.authorId,
+        content: `↩ Respondeu ao seu story: "${replyText.trim()}"`,
+      });
+      setReplyText('');
+      setReplyFocused(false);
+      toast.success('Resposta enviada!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erro ao enviar resposta');
+    } finally {
+      setReplyLoading(false);
+    }
+  };
+
   const loadViewers = async (e) => {
     e.stopPropagation();
     if (!story || !user || user.id !== story.authorId) return;
     try {
       const res = await api.get(`/stories/${story.id}/views`);
       setViewers(res.data.views || []);
-      setShowViewers(true); // pausa automaticamente via isPaused
+      setShowViewers(true);
     } catch {}
   };
 
@@ -244,7 +309,7 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
           </div>
 
           {/* Indicador de pausado */}
-          {isPaused && !showViewers && (
+          {isPaused && !showViewers && !replyFocused && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="bg-black/40 rounded-full p-4">
                 <Pause size={32} className="text-white" />
@@ -255,8 +320,78 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
 
         {/* Caption */}
         {story.caption && (
-          <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/70 to-transparent px-4 pb-6 pt-12 pointer-events-none">
-            <p className="text-white text-sm leading-relaxed">{story.caption}</p>
+          <div className="absolute bottom-20 left-0 right-0 z-10 px-4 pointer-events-none">
+            <p className="text-white text-sm leading-relaxed text-center bg-black/40 rounded-xl px-3 py-2">
+              {story.caption}
+            </p>
+          </div>
+        )}
+
+        {/* ── Barra inferior: reply + like + share ── */}
+        {user && (
+          <div className="absolute bottom-0 left-0 right-0 z-20 px-3 pb-4 pt-2">
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+
+              {/* Input de resposta (só para quem não é o autor) */}
+              {!isAuthor && (
+                <form onSubmit={handleReply} className="flex-1 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onFocus={() => setReplyFocused(true)}
+                    onBlur={() => setReplyFocused(false)}
+                    placeholder="Responder ao story..."
+                    maxLength={300}
+                    className="flex-1 bg-white/15 border border-white/25 text-white placeholder-white/50 text-sm rounded-full px-4 py-2 focus:outline-none focus:border-white/50 transition-colors backdrop-blur-sm"
+                  />
+                  {replyText.trim() && (
+                    <button
+                      type="submit"
+                      disabled={replyLoading}
+                      className="bg-primary-500 text-white rounded-full p-2 hover:bg-primary-600 transition-colors disabled:opacity-50 flex-shrink-0"
+                    >
+                      {replyLoading ? (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin block" />
+                      ) : (
+                        <Send size={14} />
+                      )}
+                    </button>
+                  )}
+                </form>
+              )}
+
+              {/* Espaçador quando é o autor */}
+              {isAuthor && <div className="flex-1" />}
+
+              {/* Like */}
+              <button
+                onClick={handleLike}
+                className="flex flex-col items-center gap-0.5 flex-shrink-0 group"
+                title={liked ? 'Descurtir' : 'Curtir'}
+              >
+                <Heart
+                  size={24}
+                  className={`transition-all ${
+                    liked
+                      ? 'text-red-500 fill-red-500 scale-110'
+                      : 'text-white/80 group-hover:text-white'
+                  }`}
+                />
+                {likeCount > 0 && (
+                  <span className="text-white/70 text-xs leading-none">{likeCount}</span>
+                )}
+              </button>
+
+              {/* Compartilhar */}
+              <button
+                onClick={handleShare}
+                className="text-white/80 hover:text-white transition-colors flex-shrink-0 p-1"
+                title="Compartilhar"
+              >
+                <Share2 size={20} />
+              </button>
+            </div>
           </div>
         )}
 

@@ -24,6 +24,9 @@ router.delete('/:id', ensureAuthenticated, storyController.deleteStory);
 // Registrar visualizacao
 router.post('/:id/view', ensureAuthenticated, storyController.viewStory);
 
+// Curtir story (toggle)
+router.post('/:id/like', ensureAuthenticated, storyController.toggleLike);
+
 // Listar quem viu (apenas autor)
 router.get('/:id/views', ensureAuthenticated, storyController.getStoryViews);
 

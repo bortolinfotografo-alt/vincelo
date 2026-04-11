@@ -91,6 +91,7 @@ model User {
   savedPosts       SavedPost[]        @relation("SavedPosts")
   stories          Story[]            @relation("StoriesAuthored")
   storyViews       StoryView[]        @relation("StoryViews")
+  storyLikes       StoryLike[]        @relation("StoryLikesUser")
   following        Follow[]           @relation("Following")
   followers        Follow[]           @relation("Followers")
 
@@ -401,10 +402,28 @@ model Story {
 
   author User        @relation("StoriesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
   views  StoryView[]
+  likes  StoryLike[]
 
   @@index([authorId])
   @@index([expiresAt])
   @@map("stories")
+}
+
+// ============================================================
+// STORY LIKE (CURTIDA EM STORY)
+// ============================================================
+
+model StoryLike {
+  id        String   @id @default(uuid())
+  storyId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation("StoryLikesUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+  @@map("story_likes")
 }
 
 // ============================================================

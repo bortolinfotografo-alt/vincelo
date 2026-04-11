@@ -1,24 +1,41 @@
 // ============================================================
 // STORY CONTROLLER
-// Stories de 24h: criar, listar, visualizar, limpar expirados
+// Stories de 24h: criar, listar, curtir, visualizar, limpar expirados
 // ============================================================
 
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
 
-// Inclui dados do autor em cada story
-const storyInclude = {
-  author: {
-    select: {
-      id: true,
-      name: true,
-      avatar: true,
-      role: true,
-      isVerified: true,
+// Inclui dados do autor e contagens em cada story
+function storyInclude(currentUserId) {
+  return {
+    author: {
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        role: true,
+        isVerified: true,
+      },
     },
-  },
-  _count: { select: { views: true } },
-};
+    _count: { select: { views: true, likes: true } },
+    ...(currentUserId && {
+      likes: { where: { userId: currentUserId }, select: { id: true } },
+    }),
+  };
+}
+
+// Formata story para resposta padrão
+function formatStory(story, currentUserId) {
+  return {
+    ...story,
+    viewCount: story._count?.views ?? 0,
+    likeCount: story._count?.likes ?? 0,
+    isLiked: currentUserId ? (story.likes?.length > 0) : false,
+    likes: undefined,
+    _count: undefined,
+  };
+}
 
 /**
  * POST /api/stories
@@ -44,12 +61,12 @@ async function createStory(req, res) {
       caption: caption || null,
       expiresAt,
     },
-    include: storyInclude,
+    include: storyInclude(req.user.id),
   });
 
   logger.info('[STORY] Story criado', { storyId: story.id, userId: req.user.id, expiresAt });
 
-  return res.status(201).json(story);
+  return res.status(201).json(formatStory(story, req.user.id));
 }
 
 /**
@@ -58,14 +75,15 @@ async function createStory(req, res) {
  */
 async function getStoriesFeed(req, res) {
   const now = new Date();
+  const currentUserId = req.user.id;
 
   // IDs de quem o usuario segue + o proprio
   const follows = await prisma.follow.findMany({
-    where: { followerId: req.user.id },
+    where: { followerId: currentUserId },
     select: { followingId: true },
   });
 
-  const authorIds = [req.user.id, ...follows.map((f) => f.followingId)];
+  const authorIds = [currentUserId, ...follows.map((f) => f.followingId)];
 
   // Busca stories ativos dos usuarios seguidos
   const stories = await prisma.story.findMany({
@@ -75,12 +93,12 @@ async function getStoriesFeed(req, res) {
     },
     orderBy: { createdAt: 'desc' },
     include: {
-      ...storyInclude,
-      // Verifica se o usuario ja viu este story
-      views: {
-        where: { viewerId: req.user.id },
-        select: { id: true },
+      author: {
+        select: { id: true, name: true, avatar: true, role: true, isVerified: true },
       },
+      _count: { select: { views: true, likes: true } },
+      views: { where: { viewerId: currentUserId }, select: { id: true } },
+      likes: { where: { userId: currentUserId }, select: { id: true } },
     },
   });
 
@@ -100,8 +118,11 @@ async function getStoriesFeed(req, res) {
     grouped[authorId].stories.push({
       ...story,
       viewCount: story._count.views,
+      likeCount: story._count.likes,
+      isLiked: story.likes?.length > 0,
       seen,
       views: undefined,
+      likes: undefined,
       _count: undefined,
     });
   }
@@ -121,6 +142,7 @@ async function getStoriesFeed(req, res) {
 async function getUserStories(req, res) {
   const { userId } = req.params;
   const now = new Date();
+  const currentUserId = req.user?.id || null;
 
   const stories = await prisma.story.findMany({
     where: {
@@ -129,10 +151,14 @@ async function getUserStories(req, res) {
     },
     orderBy: { createdAt: 'asc' },
     include: {
-      ...storyInclude,
-      views: req.user
-        ? { where: { viewerId: req.user.id }, select: { id: true } }
-        : false,
+      author: {
+        select: { id: true, name: true, avatar: true, role: true, isVerified: true },
+      },
+      _count: { select: { views: true, likes: true } },
+      ...(currentUserId && {
+        views: { where: { viewerId: currentUserId }, select: { id: true } },
+        likes: { where: { userId: currentUserId }, select: { id: true } },
+      }),
     },
   });
 
@@ -140,8 +166,11 @@ async function getUserStories(req, res) {
     stories: stories.map((s) => ({
       ...s,
       viewCount: s._count.views,
-      seen: req.user ? s.views?.length > 0 : false,
+      likeCount: s._count.likes,
+      isLiked: currentUserId ? (s.likes?.length > 0) : false,
+      seen: currentUserId ? (s.views?.length > 0) : false,
       views: undefined,
+      likes: undefined,
       _count: undefined,
     })),
   });
@@ -161,7 +190,6 @@ async function viewStory(req, res) {
     return res.status(410).json({ message: 'Story expirado' });
   }
 
-  // Usa upsert para nao duplicar visualizacoes
   await prisma.storyView.upsert({
     where: { storyId_viewerId: { storyId, viewerId } },
     create: { storyId, viewerId },
@@ -169,6 +197,35 @@ async function viewStory(req, res) {
   });
 
   return res.json({ message: 'Visualizacao registrada' });
+}
+
+/**
+ * POST /api/stories/:id/like
+ * Curtir/descurtir story (toggle)
+ */
+async function toggleLike(req, res) {
+  const { id: storyId } = req.params;
+  const userId = req.user.id;
+
+  const story = await prisma.story.findUnique({ where: { id: storyId } });
+  if (!story) return res.status(404).json({ message: 'Story nao encontrado' });
+  if (new Date() > story.expiresAt) {
+    return res.status(410).json({ message: 'Story expirado' });
+  }
+
+  const existing = await prisma.storyLike.findUnique({
+    where: { storyId_userId: { storyId, userId } },
+  });
+
+  if (existing) {
+    await prisma.storyLike.delete({ where: { storyId_userId: { storyId, userId } } });
+    const likeCount = await prisma.storyLike.count({ where: { storyId } });
+    return res.json({ liked: false, likeCount });
+  }
+
+  await prisma.storyLike.create({ data: { storyId, userId } });
+  const likeCount = await prisma.storyLike.count({ where: { storyId } });
+  return res.json({ liked: true, likeCount });
 }
 
 /**
@@ -232,6 +289,7 @@ module.exports = {
   getStoriesFeed,
   getUserStories,
   viewStory,
+  toggleLike,
   getStoryViews,
   deleteStory,
   cleanExpiredStories,
