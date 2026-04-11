@@ -18,9 +18,10 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
   const [viewers, setViewers]         = useState([]);
   const [paused, setPaused]           = useState(false);
 
-  // Like
-  const [liked, setLiked]       = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
+  // Overrides de like por storyId — evita sangramento de estado entre stories.
+  // Chave: story.id → { liked: bool, likeCount: number }
+  // Quando não há override, usa os dados vindos da API (story.isLiked / story.likeCount).
+  const [likeOverrides, setLikeOverrides] = useState({});
 
   // Resposta por DM
   const [replyText, setReplyText]       = useState('');
@@ -33,15 +34,13 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
   const group = groups[groupIndex];
   const story = group?.stories[storyIndex];
 
+  // Like derivado: override tem prioridade sobre dado da API
+  const override  = story ? likeOverrides[story.id] : undefined;
+  const liked     = override !== undefined ? override.liked     : (story?.isLiked   || false);
+  const likeCount = override !== undefined ? override.likeCount : (story?.likeCount || 0);
+
   // Pausa quando viewers abertos, reply focado ou paused manual
   const isPaused = paused || showViewers || replyFocused;
-
-  // Sincroniza estado de like quando story muda
-  useEffect(() => {
-    if (!story) return;
-    setLiked(story.isLiked || false);
-    setLikeCount(story.likeCount || 0);
-  }, [story?.id]);
 
   // Pausa/retoma vídeo com isPaused
   useEffect(() => {
@@ -111,21 +110,23 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     }
   };
 
-  // Curtir story
+  // Curtir story — usa override isolado por storyId, sem vazar para outros stories
   const handleLike = async (e) => {
     e.stopPropagation();
     if (!user || !story) return;
-    const newLiked = !liked;
-    setLiked(newLiked);
-    setLikeCount((c) => newLiked ? c + 1 : Math.max(0, c - 1));
+    const storyId   = story.id;
+    const newLiked  = !liked;
+    const newCount  = newLiked ? likeCount + 1 : Math.max(0, likeCount - 1);
+
+    // Atualização otimista somente para este story
+    setLikeOverrides((prev) => ({ ...prev, [storyId]: { liked: newLiked, likeCount: newCount } }));
+
     try {
-      const res = await api.post(`/stories/${story.id}/like`);
-      setLiked(res.data.liked);
-      setLikeCount(res.data.likeCount);
+      const res = await api.post(`/stories/${storyId}/like`);
+      setLikeOverrides((prev) => ({ ...prev, [storyId]: { liked: res.data.liked, likeCount: res.data.likeCount } }));
     } catch {
-      // revert
-      setLiked(!newLiked);
-      setLikeCount((c) => !newLiked ? c + 1 : Math.max(0, c - 1));
+      // Reverte somente este story
+      setLikeOverrides((prev) => ({ ...prev, [storyId]: { liked, likeCount } }));
     }
   };
 
@@ -149,10 +150,14 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     if (!replyText.trim() || !user || !story) return;
 
     setReplyLoading(true);
+    const storyContext = story.caption
+      ? `"${story.caption}"`
+      : `de ${new Date(story.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+
     try {
       await api.post('/chat', {
         receiverId: story.authorId,
-        content: `↩ Respondeu ao seu story: "${replyText.trim()}"`,
+        content: `↩ Respondeu ao seu story ${storyContext}: "${replyText.trim()}"`,
       });
       setReplyText('');
       setReplyFocused(false);
