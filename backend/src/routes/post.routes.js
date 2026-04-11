@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const postController = require('../controllers/post.controller');
 const { ensureAuthenticated, optionalAuth } = require('../middlewares/auth.middleware');
-const { upload, validateMagicBytes, createUploadMiddleware } = require('../services/storage.service');
+const { upload, validateMagicBytes, createMultiUploadMiddleware } = require('../services/storage.service');
 
 // Feed e explore sao protegidos (feed personalizado exige login)
 router.get('/feed', ensureAuthenticated, postController.getFeed);
@@ -15,8 +15,18 @@ router.get('/explore', optionalAuth, postController.getExploreFeed);
 router.get('/saved', ensureAuthenticated, postController.getSavedPosts);
 router.get('/user/:userId', optionalAuth, postController.getUserPosts);
 
-// Criar post (com upload opcional de midia)
-router.post('/', ensureAuthenticated, upload.single('media'), validateMagicBytes, createUploadMiddleware('posts'), postController.createPost);
+// Criar post (até 10 mídias + 1 thumbnail opcional)
+router.post(
+  '/',
+  ensureAuthenticated,
+  upload.fields([
+    { name: 'media', maxCount: 10 },
+    { name: 'thumbnail', maxCount: 1 },
+  ]),
+  validateMagicBytes,
+  createMultiUploadMiddleware('posts'),
+  postController.createPost
+);
 
 // Editar descricao do post
 router.put('/:id', ensureAuthenticated, postController.updatePost);

@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import FollowButton from '@/components/social/FollowButton';
 import StoryViewer from '@/components/social/StoryViewer';
+import MediaCarousel from '@/components/social/MediaCarousel';
+import LikeButton from '@/components/social/LikeButton';
+import CommentSection from '@/components/social/CommentSection';
 
 // ============================================================
 // Grid de posts (3 colunas, quadrado)
@@ -101,17 +104,41 @@ function PostsGrid({ userId, isCurrentUser }) {
               onClick={() => { setMenuPostId(null); setSelectedPost(post); }}
               className="w-full h-full"
             >
-              {post.mediaUrl ? (
-                post.mediaType === 'VIDEO' ? (
-                  <>
-                    <video src={post.mediaUrl} className="w-full h-full object-cover" />
-                    <div className="absolute top-1.5 right-1.5">
-                      <Play size={14} className="text-white drop-shadow" fill="white" />
-                    </div>
-                  </>
-                ) : (
-                  <img src={post.mediaUrl} alt="" className="w-full h-full object-cover" />
-                )
+              {post.mediaUrl || post.media?.length > 0 ? (
+                (() => {
+                  // Thumbnail do grid: usa imagem de capa se disponível (melhor performance)
+                  const firstMedia = post.media?.[0];
+                  const isVideo = (firstMedia?.mediaType || post.mediaType) === 'VIDEO';
+                  const thumbSrc = firstMedia?.thumbnailUrl || post.thumbnailUrl;
+                  const mediaSrc = firstMedia?.mediaUrl || post.mediaUrl;
+
+                  // Indicador de carrossel
+                  const isCarousel = (post.media?.length || 0) > 1;
+
+                  return (
+                    <>
+                      {isVideo && thumbSrc ? (
+                        <img src={thumbSrc} alt="" className="w-full h-full object-cover" />
+                      ) : isVideo ? (
+                        <video src={mediaSrc} className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={mediaSrc} alt="" className="w-full h-full object-cover" />
+                      )}
+                      {isVideo && (
+                        <div className="absolute top-1.5 right-1.5">
+                          <Play size={14} className="text-white drop-shadow" fill="white" />
+                        </div>
+                      )}
+                      {isCarousel && (
+                        <div className="absolute top-1.5 left-1.5 bg-black/50 rounded-full p-0.5">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                            <rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/>
+                          </svg>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-200 p-2 dark:bg-gray-800">
                   <p className="text-gray-500 text-xs text-center line-clamp-3 dark:text-gray-400">{post.description}</p>
@@ -159,7 +186,7 @@ function PostsGrid({ userId, isCurrentUser }) {
         ))}
       </div>
 
-      {/* Modal de post individual */}
+      {/* Modal de post individual — com carrossel e comentários funcionais */}
       {selectedPost && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
@@ -169,25 +196,42 @@ function PostsGrid({ userId, isCurrentUser }) {
             className="bg-white border border-gray-200 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
-            {selectedPost.mediaUrl && (
-              selectedPost.mediaType === 'VIDEO' ? (
-                <video src={selectedPost.mediaUrl} controls className="w-full rounded-t-xl" />
-              ) : (
-                <img src={selectedPost.mediaUrl} alt="" className="w-full rounded-t-xl object-contain max-h-80" />
-              )
-            )}
+            {/* Fechar */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-1">
+              <p className="text-xs text-gray-400">
+                {new Date(selectedPost.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </p>
+              <button onClick={() => setSelectedPost(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Mídia (carrossel) */}
+            <MediaCarousel post={selectedPost} />
+
+            {/* Descrição */}
             {selectedPost.description && (
-              <div className="p-4">
+              <div className="px-4 pt-3">
                 <p className="text-gray-700 text-sm dark:text-gray-200">{selectedPost.description}</p>
-                <p className="text-gray-500 text-xs mt-2">
-                  {new Date(selectedPost.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                </p>
               </div>
             )}
-            <div className="flex items-center gap-4 px-4 pb-4 text-sm text-gray-400">
-              <span className="flex items-center gap-1"><Star size={14} /> {selectedPost.likeCount} curtidas</span>
-              <span className="flex items-center gap-1"><MessageCircle size={14} /> {selectedPost.commentCount} comentarios</span>
+
+            {/* Ações interativas: curtir + comentários */}
+            <div className="px-4 py-3 space-y-2">
+              <div className="flex items-center gap-4">
+                <LikeButton
+                  postId={selectedPost.id}
+                  initialLiked={selectedPost.isLiked}
+                  initialCount={selectedPost.likeCount}
+                />
+                <CommentSection
+                  postId={selectedPost.id}
+                  initialCount={selectedPost.commentCount}
+                />
+              </div>
             </div>
+
+            {/* Ações de dono */}
             {isCurrentUser && (
               <div className="flex gap-2 px-4 pb-4">
                 <button

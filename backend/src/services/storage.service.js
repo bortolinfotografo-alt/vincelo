@@ -66,21 +66,34 @@ const upload = multer({
 // ============================================================
 
 function validateMagicBytes(req, res, next) {
-  const file = req.file || (req.files && req.files[0]);
+  // Suporta upload.single() → req.file
+  //         upload.array()  → req.files (array)
+  //         upload.fields() → req.files (objeto { campo: [files] })
+  let filesToCheck = [];
 
-  if (!file) return next();
+  if (req.file) {
+    filesToCheck = [req.file];
+  } else if (req.files) {
+    if (Array.isArray(req.files)) {
+      filesToCheck = req.files;
+    } else {
+      filesToCheck = Object.values(req.files).flat();
+    }
+  }
 
-  // Le os primeiros 12 bytes do buffer
-  const buffer = file.buffer.slice(0, 12);
+  if (filesToCheck.length === 0) return next();
 
-  if (!isAllowedMagicBytes(buffer)) {
-    logger.warn('[STORAGE] Arquivo rejeitado por magic bytes invalidos', {
-      originalName: file.originalname,
-      mimetype: file.mimetype,
-    });
-    return res.status(400).json({
-      message: 'Arquivo invalido. O conteudo nao corresponde ao tipo declarado.',
-    });
+  for (const file of filesToCheck) {
+    const buffer = file.buffer.slice(0, 12);
+    if (!isAllowedMagicBytes(buffer)) {
+      logger.warn('[STORAGE] Arquivo rejeitado por magic bytes invalidos', {
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+      });
+      return res.status(400).json({
+        message: 'Arquivo invalido. O conteudo nao corresponde ao tipo declarado.',
+      });
+    }
   }
 
   return next();
@@ -134,10 +147,42 @@ function createUploadMiddleware(bucket = 'posts') {
   };
 }
 
+/**
+ * Middleware para upload múltiplo via upload.fields()
+ * Processa req.files.media[] e req.files.thumbnail[]
+ * Anexa req.fileUrls (array) e req.thumbnailUrl ao request.
+ */
+function createMultiUploadMiddleware(bucket = 'posts') {
+  return async (req, res, next) => {
+    const mediaFiles = req.files?.media || [];
+    const thumbnailFiles = req.files?.thumbnail || [];
+
+    try {
+      if (mediaFiles.length > 0) {
+        req.fileUrls = await Promise.all(mediaFiles.map((f) => uploadFile(f, bucket)));
+      } else {
+        req.fileUrls = [];
+      }
+
+      if (thumbnailFiles.length > 0) {
+        req.thumbnailUrl = await uploadFile(thumbnailFiles[0], bucket);
+      } else {
+        req.thumbnailUrl = null;
+      }
+
+      next();
+    } catch (err) {
+      logger.error('[STORAGE] Falha no multi-upload', { error: err.message });
+      return res.status(500).json({ message: 'Erro ao fazer upload dos arquivos' });
+    }
+  };
+}
+
 module.exports = {
   upload,
   validateMagicBytes,
   generateFileName,
   uploadFile,
   createUploadMiddleware,
+  createMultiUploadMiddleware,
 };

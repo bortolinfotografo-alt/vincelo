@@ -6,9 +6,10 @@
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
 
-// Campos padrao para incluir em posts (autor, likes, comentarios)
+// Campos padrao para incluir em posts (autor, likes, comentarios, midia do carrossel)
 function postInclude(currentUserId) {
   return {
+    media: { orderBy: { order: 'asc' } },
     author: {
       select: {
         id: true,
@@ -47,39 +48,58 @@ function formatPost(post, currentUserId) {
 
 /**
  * POST /api/posts
- * Cria um novo post (com ou sem midia)
+ * Cria um novo post (suporta múltiplas mídias via upload.fields)
+ * Fluxo novo: req.files.media[] + req.files.thumbnail[]
+ * Fluxo legado: req.file (upload.single) — mantido para compatibilidade
  */
 async function createPost(req, res) {
   const { description, aspectRatio } = req.body;
-  const file = req.file;
+  const mediaFiles = req.files?.media || [];
+  const singleFile = req.file; // legado
 
-  if (!description && !file) {
+  if (!description && mediaFiles.length === 0 && !singleFile) {
     return res.status(400).json({ message: 'Post deve ter descricao ou midia' });
-  }
-
-  let mediaUrl = null;
-  let mediaType = null;
-
-  if (file) {
-    mediaUrl = req.fileUrl;
-    mediaType = file.mimetype.startsWith('image') ? 'PHOTO' : 'VIDEO';
   }
 
   const validRatios = ['LANDSCAPE', 'PORTRAIT'];
   const ratio = validRatios.includes(aspectRatio) ? aspectRatio : 'LANDSCAPE';
+  const thumbnailUrl = req.thumbnailUrl || null;
+
+  const postData = {
+    authorId: req.user.id,
+    description: description || null,
+    thumbnailUrl,
+    aspectRatio: null,
+  };
+
+  if (mediaFiles.length > 0) {
+    // Fluxo novo: múltiplas mídias (carrossel)
+    const urls = req.fileUrls || [];
+    const mediaItems = mediaFiles.map((f, i) => ({
+      mediaUrl: urls[i],
+      mediaType: f.mimetype.startsWith('image') ? 'PHOTO' : 'VIDEO',
+      thumbnailUrl: i === 0 ? thumbnailUrl : null,
+      order: i,
+    }));
+
+    // Mantém mediaUrl/mediaType no Post para compatibilidade com posts antigos
+    postData.mediaUrl = mediaItems[0].mediaUrl;
+    postData.mediaType = mediaItems[0].mediaType;
+    postData.aspectRatio = ratio;
+    postData.media = { create: mediaItems };
+  } else if (singleFile) {
+    // Fluxo legado: arquivo único
+    postData.mediaUrl = req.fileUrl;
+    postData.mediaType = singleFile.mimetype.startsWith('image') ? 'PHOTO' : 'VIDEO';
+    postData.aspectRatio = ratio;
+  }
 
   const post = await prisma.post.create({
-    data: {
-      authorId: req.user.id,
-      description: description || null,
-      mediaUrl,
-      mediaType,
-      aspectRatio: mediaUrl ? ratio : null,
-    },
+    data: postData,
     include: postInclude(req.user.id),
   });
 
-  logger.info('[POST] Post criado', { postId: post.id, userId: req.user.id });
+  logger.info('[POST] Post criado', { postId: post.id, userId: req.user.id, mediaCount: mediaFiles.length });
 
   return res.status(201).json(formatPost(post, req.user.id));
 }

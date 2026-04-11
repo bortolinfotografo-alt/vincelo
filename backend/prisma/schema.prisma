@@ -294,24 +294,44 @@ model StripeSubscription {
 // ============================================================
 
 model Post {
-  id          String       @id @default(uuid())
-  authorId    String
-  mediaUrl    String?
-  mediaType   MediaType?
-  aspectRatio AspectRatio? @default(LANDSCAPE)
-  description String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           String       @id @default(uuid())
+  authorId     String
+  mediaUrl     String?
+  mediaType    MediaType?
+  thumbnailUrl String?
+  aspectRatio  AspectRatio? @default(LANDSCAPE)
+  description  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   author   User          @relation("PostsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
   likes    PostLike[]
   comments PostComment[]
   savedBy  SavedPost[]
+  media    PostMedia[]
 
   @@index([authorId])
   @@index([createdAt])
   @@index([authorId, createdAt])  // feed do usuário paginado por data
   @@map("posts")
+}
+
+// ============================================================
+// POST MEDIA (CARROSSEL — até 10 itens por post)
+// ============================================================
+
+model PostMedia {
+  id           String    @id @default(uuid())
+  postId       String
+  mediaUrl     String
+  mediaType    MediaType
+  thumbnailUrl String?
+  order        Int       @default(0)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("post_media")
 }
 
 // ============================================================

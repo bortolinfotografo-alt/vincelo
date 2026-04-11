@@ -1,21 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, Bookmark, BookmarkCheck, BadgeCheck, Trash2, ExternalLink, Volume2, VolumeX, Share2 } from 'lucide-react';
+import { MoreHorizontal, Bookmark, BookmarkCheck, BadgeCheck, Trash2, ExternalLink, Share2 } from 'lucide-react';
 import LikeButton from './LikeButton';
 import CommentSection from './CommentSection';
 import ShareModal from './ShareModal';
+import MediaCarousel from './MediaCarousel';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
+import { Avatar } from '@/components/ui/Avatar';
 import toast from 'react-hot-toast';
 
 // ── Avatar ────────────────────────────────────────────────────
-// Usa o componente Avatar reutilizável do sistema de design
-import { Avatar } from '@/components/ui/Avatar';
 function UserAvatar({ user, size = 10 }) {
-  // Mapeia o tamanho numérico para o sistema do Avatar component
   const sizeMap = { 8: 'sm', 10: 'md', 14: 'lg', 20: 'xl' };
   return <Avatar src={user?.avatar} name={user?.name} size={sizeMap[size] || 'md'} />;
 }
@@ -48,72 +47,6 @@ function PostDescription({ text, authorId, authorName }) {
         )
       )}
     </p>
-  );
-}
-
-// ── Vídeo com autoplay por IntersectionObserver ───────────────
-function AutoplayVideo({ src, className }) {
-  const videoRef = useRef(null);
-  const [muted, setMuted] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return localStorage.getItem('videoMuted') !== 'false';
-  });
-
-  // Sincroniza mute com outros vídeos via evento global
-  useEffect(() => {
-    const onMuteChange = (e) => setMuted(e.detail.muted);
-    window.addEventListener('videoMuteChange', onMuteChange);
-    return () => window.removeEventListener('videoMuteChange', onMuteChange);
-  }, []);
-
-  // IntersectionObserver para autoplay
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          video.play().catch(() => {});
-        } else {
-          video.pause();
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    observer.observe(video);
-    return () => observer.disconnect();
-  }, []);
-
-  const toggleMute = (e) => {
-    e.stopPropagation();
-    const newMuted = !muted;
-    setMuted(newMuted);
-    localStorage.setItem('videoMuted', String(newMuted));
-    // Propaga para todos os outros vídeos na página
-    window.dispatchEvent(new CustomEvent('videoMuteChange', { detail: { muted: newMuted } }));
-  };
-
-  return (
-    <div className="relative w-full h-full">
-      <video
-        ref={videoRef}
-        src={src}
-        muted={muted}
-        loop
-        playsInline
-        className={className}
-      />
-      {/* Botão mute */}
-      <button
-        onClick={toggleMute}
-        className="absolute bottom-2 right-2 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/70 transition-colors"
-        title={muted ? 'Ativar som' : 'Mutar'}
-      >
-        {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-      </button>
-    </div>
   );
 }
 
@@ -164,11 +97,6 @@ export default function PostCard({ post, onDelete }) {
     setMenuOpen(false);
   };
 
-  // Aspect ratio
-  const isPortrait = post.aspectRatio === 'PORTRAIT';
-  const mediaWrapperClass = isPortrait ? 'bg-black flex justify-center' : 'bg-black';
-  const mediaInnerClass = isPortrait ? 'w-full max-w-[340px] aspect-[9/16]' : 'w-full aspect-video';
-
   return (
     <article className="bg-white border border-gray-200 rounded-xl overflow-hidden dark:bg-gray-900 dark:border-gray-800">
       {/* Header: autor */}
@@ -218,18 +146,8 @@ export default function PostCard({ post, onDelete }) {
         </div>
       </div>
 
-      {/* Mídia */}
-      {post.mediaUrl && (
-        <div className={mediaWrapperClass}>
-          <div className={mediaInnerClass}>
-            {post.mediaType === 'VIDEO' ? (
-              <AutoplayVideo src={post.mediaUrl} className="w-full h-full object-cover" />
-            ) : (
-              <img src={post.mediaUrl} alt={post.description || 'Post'} className="w-full h-full object-cover" />
-            )}
-          </div>
-        </div>
-      )}
+      {/* Mídia — carrossel suporta 1 ou N itens */}
+      <MediaCarousel post={post} />
 
       {/* Ações e descrição */}
       <div className="px-4 py-3 space-y-2">
@@ -237,7 +155,6 @@ export default function PostCard({ post, onDelete }) {
           <div className="flex items-center gap-4">
             <LikeButton postId={post.id} initialLiked={post.isLiked} initialCount={post.likeCount} />
             <CommentSection postId={post.id} initialCount={post.commentCount} />
-            {/* Botão Compartilhar */}
             <button
               onClick={() => setShareOpen(true)}
               className="flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
@@ -254,7 +171,6 @@ export default function PostCard({ post, onDelete }) {
           </button>
         </div>
 
-        {/* Descrição com hashtags */}
         <PostDescription
           text={post.description}
           authorId={post.author.id}
@@ -262,7 +178,6 @@ export default function PostCard({ post, onDelete }) {
         />
       </div>
 
-      {/* Modal de compartilhamento */}
       {shareOpen && (
         <ShareModal
           post={post}
