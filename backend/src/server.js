@@ -67,6 +67,7 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 const postRoutes = require('./routes/post.routes');
 const storyRoutes = require('./routes/story.routes');
 const followRoutes = require('./routes/follow.routes');
+const notificationRoutes = require('./routes/notification.routes');
 const { cleanExpiredStories } = require('./controllers/story.controller');
 
 const app = express();
@@ -144,6 +145,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/follow', followRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/health', async (req, res) => {

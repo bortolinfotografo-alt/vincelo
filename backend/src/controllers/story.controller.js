@@ -5,6 +5,7 @@
 
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
+const { createNotification, deleteNotification } = require('./notification.controller');
 
 // Inclui dados do autor e contagens em cada story
 function storyInclude(currentUserId) {
@@ -220,11 +221,13 @@ async function toggleLike(req, res) {
   if (existing) {
     await prisma.storyLike.delete({ where: { storyId_userId: { storyId, userId } } });
     const likeCount = await prisma.storyLike.count({ where: { storyId } });
+    deleteNotification(story.authorId, userId, 'STORY_LIKE', { storyId });
     return res.json({ liked: false, likeCount });
   }
 
   await prisma.storyLike.create({ data: { storyId, userId } });
   const likeCount = await prisma.storyLike.count({ where: { storyId } });
+  createNotification(story.authorId, userId, 'STORY_LIKE', { storyId });
   return res.json({ liked: true, likeCount });
 }
 

@@ -5,6 +5,7 @@
 
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
+const { createNotification, deleteNotification } = require('./notification.controller');
 
 // Campos padrao para incluir em posts (autor, likes, comentarios, midia do carrossel)
 function postInclude(currentUserId) {
@@ -250,11 +251,17 @@ async function toggleLike(req, res) {
   if (existing) {
     await prisma.postLike.delete({ where: { postId_userId: { postId, userId } } });
     const count = await prisma.postLike.count({ where: { postId } });
+    // Remove notificação de like ao descurtir
+    const post = await prisma.post.findUnique({ where: { id: postId }, select: { authorId: true } });
+    if (post) deleteNotification(post.authorId, userId, 'LIKE', { postId });
     return res.json({ liked: false, likeCount: count });
   }
 
   await prisma.postLike.create({ data: { postId, userId } });
   const count = await prisma.postLike.count({ where: { postId } });
+  // Notifica o autor do post
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { authorId: true } });
+  if (post) createNotification(post.authorId, userId, 'LIKE', { postId });
   return res.json({ liked: true, likeCount: count });
 }
 
@@ -301,6 +308,9 @@ async function addComment(req, res) {
       author: { select: { id: true, name: true, avatar: true } },
     },
   });
+
+  // Notifica o autor do post sobre o comentário
+  createNotification(post.authorId, req.user.id, 'COMMENT', { postId });
 
   return res.status(201).json(comment);
 }

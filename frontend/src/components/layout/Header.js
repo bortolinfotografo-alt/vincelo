@@ -6,6 +6,7 @@ import { useAuth } from '@/app/auth-context';
 import { LogOut, LayoutDashboard, Settings, UserCircle, User, Menu, X } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import NotificationPanel from '@/components/ui/NotificationPanel';
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -58,6 +59,7 @@ export function Header() {
                 <Link href="/dashboard" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors flex items-center gap-1.5">
                   <LayoutDashboard size={14} /> Dashboard
                 </Link>
+                <NotificationPanel />
                 <div className="w-px h-6 bg-gray-200 mx-2" />
                 <div className="relative" ref={settingsRef}>
                   <button
@@ -124,6 +126,9 @@ export function Header() {
               <Link href="/jobs" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-2 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50">Vagas</Link>
               <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-2 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50">
                 <LayoutDashboard size={15} className="text-gray-400" /> Dashboard
+              </Link>
+              <Link href="/notifications" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-2 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50">
+                Atividade
               </Link>
               <div className="border-t border-gray-100 my-1 pt-1">
                 <Link href={`/profile/${user.id}`} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-2 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50">

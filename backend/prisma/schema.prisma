@@ -50,6 +50,14 @@ enum AspectRatio {
   PORTRAIT
 }
 
+enum NotificationType {
+  LIKE        // curtida em post
+  COMMENT     // comentário em post
+  FOLLOW      // novo seguidor
+  STORY_LIKE  // curtida em story
+  STORY_REPLY // resposta ao story via DM
+}
+
 // ============================================================
 // USER - tabela base de autenticacao
 // ============================================================
@@ -94,6 +102,8 @@ model User {
   storyLikes       StoryLike[]        @relation("StoryLikesUser")
   following        Follow[]           @relation("Following")
   followers        Follow[]           @relation("Followers")
+  notifications    Notification[]     @relation("NotificationsReceived")
+  actedNotifs      Notification[]     @relation("NotificationsActed")
 
   @@map("users")
 }
@@ -307,11 +317,12 @@ model Post {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  author   User          @relation("PostsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
-  likes    PostLike[]
-  comments PostComment[]
-  savedBy  SavedPost[]
-  media    PostMedia[]
+  author        User           @relation("PostsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  likes         PostLike[]
+  comments      PostComment[]
+  savedBy       SavedPost[]
+  media         PostMedia[]
+  notifications Notification[]
 
   @@index([authorId])
   @@index([createdAt])
@@ -402,9 +413,10 @@ model Story {
   createdAt DateTime  @default(now())
   expiresAt DateTime  // createdAt + 24h
 
-  author User        @relation("StoriesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
-  views  StoryView[]
-  likes  StoryLike[]
+  author        User           @relation("StoriesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  views         StoryView[]
+  likes         StoryLike[]
+  notifications Notification[]
 
   @@index([authorId])
   @@index([expiresAt])
@@ -462,4 +474,29 @@ model Follow {
   @@index([followerId])
   @@index([followingId])
   @@map("follows")
+}
+
+// ============================================================
+// NOTIFICATION (NOTIFICAÇÕES)
+// ============================================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           // destinatário
+  actorId   String           // quem gerou a ação
+  type      NotificationType
+  postId    String?          // referência ao post (LIKE, COMMENT)
+  storyId   String?          // referência ao story (STORY_LIKE, STORY_REPLY)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user  User   @relation("NotificationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  actor User   @relation("NotificationsActed", fields: [actorId], references: [id], onDelete: Cascade)
+  post  Post?  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  story Story? @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  // Garante unicidade para upsert de likes e follows
+  @@unique([userId, actorId, type, postId, storyId], name: "userId_actorId_type_postId_storyId")
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
 }

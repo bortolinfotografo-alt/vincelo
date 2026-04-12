@@ -5,6 +5,7 @@
 
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
+const { createNotification, deleteNotification } = require('./notification.controller');
 
 /**
  * POST /api/follow/:userId
@@ -40,6 +41,7 @@ async function toggleFollow(req, res) {
       prisma.follow.count({ where: { followerId: followingId } }),
     ]);
 
+    deleteNotification(followingId, followerId, 'FOLLOW');
     logger.info('[FOLLOW] Deixou de seguir', { followerId, followingId });
     return res.json({ following: false, followersCount, followingCount });
   }
@@ -52,6 +54,7 @@ async function toggleFollow(req, res) {
     prisma.follow.count({ where: { followerId: followingId } }),
   ]);
 
+  createNotification(followingId, followerId, 'FOLLOW');
   logger.info('[FOLLOW] Passou a seguir', { followerId, followingId });
   return res.json({ following: true, followersCount, followingCount });
 }

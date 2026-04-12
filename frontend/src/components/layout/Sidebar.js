@@ -6,9 +6,10 @@ import { useAuth } from '@/app/auth-context';
 import { useTheme } from '@/app/theme-context';
 import {
   Home, Compass, Briefcase, LayoutDashboard, Plus,
-  LogOut, Sun, Moon, UserCircle, Settings,
+  LogOut, Sun, Moon, UserCircle, Settings, Activity,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import NotificationPanel from '@/components/ui/NotificationPanel';
 
 // Ordem exata: Home, Freelancers, Vagas | + | Dashboard, Perfil, Config
 const NAV_ITEMS = [
@@ -126,6 +127,12 @@ export function Sidebar() {
             </Link>
           );
         })()}
+
+        {/* ── Notificações (mobile) ── */}
+        <div className="flex flex-col items-center">
+          <NotificationPanel />
+          <span className="text-[10px] font-medium text-gray-400 dark:text-gray-600 -mt-0.5">Atividade</span>
+        </div>
 
         {/* ── Config ── */}
         <div className="relative min-w-[44px]" ref={settingsRef}>
