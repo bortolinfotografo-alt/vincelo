@@ -244,11 +244,12 @@ model ChatMessage {
   id           String     @id @default(uuid())
   senderId     String
   receiverId   String
-  jobReference String?
-  content      String?    // opcional: mensagem pode conter apenas mídia
-  mediaUrl     String?
-  mediaType    MediaType?
-  isRead       Boolean    @default(false)
+  jobReference    String?
+  content         String?    // opcional: mensagem pode conter apenas mídia
+  mediaUrl        String?
+  mediaType       MediaType?
+  storyPreviewUrl String?    // thumbnail do story quando é uma resposta via DM
+  isRead          Boolean    @default(false)
   createdAt    DateTime   @default(now())
 
   sender   User @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)

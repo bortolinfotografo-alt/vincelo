@@ -11,14 +11,14 @@ const logger = require('../utils/logger');
  * Envia uma mensagem
  */
 async function sendMessage(req, res) {
-  const { receiverId, content, jobReference } = req.body;
+  const { receiverId, content, jobReference, storyPreviewUrl } = req.body;
   const mediaUrl  = req.fileUrl || null;
   const mediaType = req.file
     ? (req.file.mimetype.startsWith('image') ? 'PHOTO' : req.file.mimetype === 'application/pdf' ? 'PHOTO' : 'VIDEO')
     : null;
 
-  // Precisa ter texto ou mídia
-  if ((!content || !content.trim()) && !mediaUrl) {
+  // Precisa ter texto, mídia ou ser uma resposta a story
+  if ((!content || !content.trim()) && !mediaUrl && !storyPreviewUrl) {
     return res.status(400).json({ message: 'Mensagem deve ter texto ou arquivo' });
   }
 
@@ -42,6 +42,7 @@ async function sendMessage(req, res) {
       content: content?.trim() || null,
       mediaUrl,
       mediaType,
+      storyPreviewUrl: storyPreviewUrl || null,
       jobReference: jobReference || null,
     },
     include: {

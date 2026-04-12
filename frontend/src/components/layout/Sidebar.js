@@ -6,17 +6,17 @@ import { useAuth } from '@/app/auth-context';
 import { useTheme } from '@/app/theme-context';
 import {
   Home, Compass, Briefcase, LayoutDashboard, Plus,
-  LogOut, Sun, Moon, UserCircle, Settings, Activity,
+  LogOut, Sun, Moon, UserCircle, Settings, Activity, MessageCircle,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import NotificationPanel from '@/components/ui/NotificationPanel';
 
-// Ordem exata: Home, Freelancers, Vagas | + | Dashboard, Perfil, Config
+// Ordem: Home, Freelancers, Vagas | + | Chat, Atividade, Config
 const NAV_ITEMS = [
-  { href: '/feed',        icon: Home,            label: 'Home' },
-  { href: '/freelancers', icon: Compass,          label: 'Freelancers' },
-  { href: '/jobs',        icon: Briefcase,        label: 'Vagas' },
-  { href: '/dashboard',  icon: LayoutDashboard,  label: 'Dashboard' },
+  { href: '/feed',        icon: Home,           label: 'Home' },
+  { href: '/freelancers', icon: Compass,         label: 'Freelancers' },
+  { href: '/jobs',        icon: Briefcase,       label: 'Vagas' },
+  { href: '/chat',        icon: MessageCircle,   label: 'Chat' },
 ];
 
 export function Sidebar() {
@@ -88,7 +88,7 @@ export function Sidebar() {
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-600">Postar</span>
         </button>
 
-        {/* ── Dashboard ── */}
+        {/* ── Chat ── */}
         {NAV_ITEMS.slice(3).map(({ href, icon: Icon, label }) => {
           const active = isActive(href);
           return (
@@ -100,7 +100,7 @@ export function Sidebar() {
           );
         })}
 
-        {/* ── Perfil ── */}
+        {/* ── Perfil (avatar) ── */}
         {(() => {
           const active = isActive(`/profile/${user?.id}`);
           return (
@@ -127,12 +127,6 @@ export function Sidebar() {
             </Link>
           );
         })()}
-
-        {/* ── Notificações (mobile) ── */}
-        <div className="flex flex-col items-center">
-          <NotificationPanel />
-          <span className="text-[10px] font-medium text-gray-400 dark:text-gray-600 -mt-0.5">Atividade</span>
-        </div>
 
         {/* ── Config ── */}
         <div className="relative min-w-[44px]" ref={settingsRef}>
@@ -168,6 +162,14 @@ export function Sidebar() {
               </div>
 
               <Link
+                href={user ? `/profile/${user.id}` : '/auth/login'}
+                onClick={() => setSettingsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <UserCircle size={16} className="text-gray-400" />
+                Meu Perfil
+              </Link>
+              <Link
                 href="/profile"
                 onClick={() => setSettingsOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -175,6 +177,25 @@ export function Sidebar() {
                 <UserCircle size={16} className="text-gray-400" />
                 Editar Perfil
               </Link>
+              <Link
+                href="/dashboard"
+                onClick={() => setSettingsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <LayoutDashboard size={16} className="text-gray-400" />
+                Dashboard
+              </Link>
+
+              <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
+                {/* Notificações dentro do Config dropdown */}
+                <div className="flex items-center justify-between px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                  <span className="flex items-center gap-3">
+                    <Activity size={16} className="text-gray-400" />
+                    Atividade
+                  </span>
+                  <NotificationPanel />
+                </div>
+              </div>
 
               <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
                 <button

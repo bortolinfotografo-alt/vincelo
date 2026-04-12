@@ -12,6 +12,7 @@ import api from '@/lib/api';
 import StoriesBar from '@/components/social/StoriesBar';
 import PostCard from '@/components/social/PostCard';
 import CreatePost from '@/components/social/CreatePost';
+import PullToRefresh from '@/components/ui/PullToRefresh';
 import {
   Compass, Users, Bookmark, UserPlus, BadgeCheck,
   Search, X, Briefcase, MapPin, ChevronRight, DollarSign,
@@ -362,6 +363,7 @@ function FeedContent() {
           )}
 
           {/* ── Coluna principal ── */}
+          <PullToRefresh onRefresh={() => loadPosts(1, true)}>
           <div className="flex-1 min-w-0 space-y-4">
             {user && <StoriesBar />}
 
@@ -410,6 +412,7 @@ function FeedContent() {
               </div>
             )}
           </div>
+          </PullToRefresh>
 
           {/* ── Sidebar direita — Perfil + Sugestões (lg+) ── */}
           {user && (

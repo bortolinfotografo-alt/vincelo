@@ -151,14 +151,11 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     if (!replyText.trim() || !user || !story) return;
 
     setReplyLoading(true);
-    const storyContext = story.caption
-      ? `"${story.caption}"`
-      : `de ${new Date(story.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-
     try {
       await api.post('/chat', {
         receiverId: story.authorId,
-        content: `↩ Respondeu ao seu story ${storyContext}: "${replyText.trim()}"`,
+        content: replyText.trim(),
+        storyPreviewUrl: story.mediaUrl,
       });
       setReplyText('');
       setReplyFocused(false);

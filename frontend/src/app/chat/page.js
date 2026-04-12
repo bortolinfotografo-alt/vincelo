@@ -15,6 +15,24 @@ import EmojiButton from '@/components/ui/EmojiButton';
 
 const POLLING_INTERVAL = 5000;
 
+// ── Miniatura do story respondido ────────────────────────────
+function StoryReplyThumb({ previewUrl, authorId }) {
+  if (!previewUrl) return null;
+  return (
+    <a href={`/profile/${authorId}`} className="block mb-1.5 relative group" title="Ver perfil do autor">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={previewUrl}
+        alt="Story"
+        className="w-full max-h-40 object-cover rounded-xl opacity-90 group-hover:opacity-100 transition-opacity"
+      />
+      <div className="absolute inset-0 rounded-xl bg-black/20 group-hover:bg-black/10 transition-colors flex items-end p-2">
+        <span className="text-white text-[10px] font-medium bg-black/50 px-2 py-0.5 rounded-full">↩ Story</span>
+      </div>
+    </a>
+  );
+}
+
 // ── Renderiza mídia dentro de uma bolha ───────────────────────
 function MessageMedia({ mediaUrl, mediaType, isPdf }) {
   if (!mediaUrl) return null;
@@ -364,6 +382,10 @@ function ChatContent() {
                               ? 'bg-primary-500 text-white rounded-br-sm'
                               : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-sm'
                           }`}>
+                            <StoryReplyThumb
+                              previewUrl={msg.storyPreviewUrl}
+                              authorId={msg.receiverId}
+                            />
                             {msg.content && (
                               <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                             )}
