@@ -54,6 +54,9 @@ function isAllowedMagicBytes(buffer) {
     b[8] === 0x41 && b[9] === 0x56 && b[10] === 0x49 // AVI
   ) return true;
 
+  // PDF: %PDF
+  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return true;
+
   return false;
 }
 

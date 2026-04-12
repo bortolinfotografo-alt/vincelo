@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import EmojiButton from '@/components/ui/EmojiButton';
 
 const STORY_DURATION = 5000;
 
@@ -349,6 +350,12 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
                     placeholder="Responder ao story..."
                     maxLength={300}
                     className="flex-1 bg-white/15 border border-white/25 text-white placeholder-white/50 text-sm rounded-full px-4 py-2 focus:outline-none focus:border-white/50 transition-colors backdrop-blur-sm"
+                  />
+                  <EmojiButton
+                    onEmoji={(e) => setReplyText((p) => p + e)}
+                    side="top"
+                    dark
+                    className="text-white/70"
                   />
                   {replyText.trim() && (
                     <button

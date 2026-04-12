@@ -6,8 +6,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/app/auth-context';
 import api from '@/lib/api';
-import { MessageCircle, X, ChevronLeft, Send, Maximize2 } from 'lucide-react';
+import { MessageCircle, X, ChevronLeft, Send, Maximize2, Paperclip, FileText } from 'lucide-react';
 import Link from 'next/link';
+import EmojiButton from '@/components/ui/EmojiButton';
 
 const POLL_MS = 5000;
 
@@ -74,16 +75,45 @@ function ConvList({ conversations, loading, onSelect }) {
 // ── Thread de mensagens ───────────────────────────────────────
 function MessageThread({ currentUser, partner, messages, onBack, onSend }) {
   const [text, setText] = useState('');
+  const [attachFile, setAttachFile] = useState(null);
+  const [attachPreview, setAttachPreview] = useState(null);
+  const [sending, setSending] = useState(false);
   const endRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!text.trim()) return;
-    onSend(text.trim());
+  const clearAttach = () => {
+    setAttachFile(null);
+    setAttachPreview(null);
+  };
+
+  const handleAttachSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAttachFile(file);
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      setAttachPreview(URL.createObjectURL(file));
+    } else {
+      setAttachPreview(null);
+    }
+    e.target.value = '';
+  };
+
+  const handleSend = async () => {
+    if (!text.trim() && !attachFile) return;
+    setSending(true);
+    const content = text.trim();
+    const fileToSend = attachFile;
     setText('');
+    clearAttach();
+    try {
+      await onSend(content, fileToSend);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -98,12 +128,14 @@ function MessageThread({ currentUser, partner, messages, onBack, onSend }) {
         </p>
       </div>
 
+      {/* Mensagens */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {messages.length === 0 ? (
           <p className="text-center text-gray-400 text-xs py-4">Nenhuma mensagem. Diga olá!</p>
         ) : (
           messages.map((msg) => {
             const isMine = msg.senderId === currentUser.id;
+            const isPdfUrl = msg.mediaUrl?.toLowerCase().endsWith('.pdf');
             return (
               <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-sm ${
@@ -111,7 +143,24 @@ function MessageThread({ currentUser, partner, messages, onBack, onSend }) {
                     ? 'bg-primary-500 text-white rounded-br-sm'
                     : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-bl-sm'
                 }`}>
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  {msg.content && (
+                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  )}
+                  {msg.mediaUrl && (
+                    isPdfUrl ? (
+                      <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 mt-1 underline text-xs opacity-90">
+                        <FileText size={13} /> Abrir documento
+                      </a>
+                    ) : msg.mediaType === 'VIDEO' ? (
+                      <video src={msg.mediaUrl} controls className="mt-1 rounded-lg max-w-full max-h-36 object-cover" />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={msg.mediaUrl} alt="Anexo"
+                        className="mt-1 rounded-lg max-w-full max-h-36 object-cover cursor-pointer"
+                        onClick={() => window.open(msg.mediaUrl, '_blank')} />
+                    )
+                  )}
                   <p className={`text-[10px] mt-0.5 ${isMine ? 'text-primary-200 text-right' : 'text-gray-400'}`}>
                     {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     {isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}
@@ -124,7 +173,46 @@ function MessageThread({ currentUser, partner, messages, onBack, onSend }) {
         <div ref={endRef} />
       </div>
 
-      <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
+      {/* Preview do anexo */}
+      {attachFile && (
+        <div className="px-3 pt-2 flex items-center gap-2 border-t border-gray-100 dark:border-gray-800">
+          <div className="relative">
+            {attachPreview && attachFile.type.startsWith('image/') ? (
+              <img src={attachPreview} alt="" className="h-12 w-12 object-cover rounded-lg" />
+            ) : attachPreview && attachFile.type.startsWith('video/') ? (
+              <video src={attachPreview} className="h-12 w-12 object-cover rounded-lg" />
+            ) : (
+              <div className="h-12 w-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <FileText size={18} className="text-gray-500" />
+              </div>
+            )}
+            <button onClick={clearAttach}
+              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-700 text-white rounded-full flex items-center justify-center">
+              <X size={9} />
+            </button>
+          </div>
+          <span className="text-xs text-gray-500 truncate max-w-[160px]">{attachFile.name}</span>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="flex items-center gap-1.5 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="text-gray-400 hover:text-primary-500 transition-colors flex-shrink-0"
+          title="Anexar arquivo"
+        >
+          <Paperclip size={16} />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*,application/pdf"
+          onChange={handleAttachSelect}
+          className="hidden"
+        />
+
         <input
           type="text"
           value={text}
@@ -134,12 +222,17 @@ function MessageThread({ currentUser, partner, messages, onBack, onSend }) {
           maxLength={2000}
           className="flex-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-primary-500"
         />
+
+        <EmojiButton onEmoji={(e) => setText((p) => p + e)} side="top" />
+
         <button
           onClick={handleSend}
-          disabled={!text.trim()}
+          disabled={sending || (!text.trim() && !attachFile)}
           className="text-primary-500 hover:text-primary-600 disabled:text-gray-300 dark:disabled:text-gray-600 transition-colors"
         >
-          <Send size={18} />
+          {sending
+            ? <span className="w-4 h-4 border-2 border-primary-400 border-t-transparent rounded-full animate-spin block" />
+            : <Send size={18} />}
         </button>
       </div>
     </div>
@@ -202,7 +295,7 @@ export default function FloatingChat() {
       setLoadingConvs(true);
       fetchConversations().finally(() => setLoadingConvs(false));
     }
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectConv = (conv) => {
     setSelectedConv(conv);
@@ -217,10 +310,14 @@ export default function FloatingChat() {
     fetchConversations();
   };
 
-  const handleSend = async (content) => {
+  const handleSend = async (content, file) => {
     if (!selectedConv) return;
     try {
-      await api.post('/chat', { receiverId: selectedConv.user.id, content });
+      const data = new FormData();
+      data.append('receiverId', selectedConv.user.id);
+      if (content) data.append('content', content);
+      if (file) data.append('media', file);
+      await api.post('/chat', data, { headers: { 'Content-Type': 'multipart/form-data' } });
       fetchMessages(selectedConv.user.id);
       fetchConversations();
     } catch { /* silencioso */ }
@@ -232,7 +329,7 @@ export default function FloatingChat() {
     <div className="hidden md:flex fixed bottom-24 right-5 z-[60] flex-col items-end gap-2">
       {/* Painel expandido */}
       {open && (
-        <div className="w-80 h-[420px] bg-white border border-gray-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden dark:bg-gray-900 dark:border-gray-700">
+        <div className="w-80 h-[460px] bg-white border border-gray-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden dark:bg-gray-900 dark:border-gray-700">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">

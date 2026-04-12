@@ -7,6 +7,7 @@ import { Send, Trash2 } from 'lucide-react';
 import { useAuth } from '@/app/auth-context';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import EmojiButton from '@/components/ui/EmojiButton';
 
 function Avatar({ user, size = 8 }) {
   const s = `w-${size} h-${size}`;
@@ -124,6 +125,7 @@ export default function CommentSection({ postId, initialCount = 0 }) {
                 maxLength={500}
                 className="flex-1 bg-gray-100 border border-gray-300 rounded-full px-4 py-1.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:placeholder-gray-500"
               />
+              <EmojiButton onEmoji={(e) => setText((p) => p + e)} side="top" />
               <button
                 type="submit"
                 disabled={loading || !text.trim()}

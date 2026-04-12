@@ -231,13 +231,15 @@ model Proposal {
 // ============================================================
 
 model ChatMessage {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   senderId     String
   receiverId   String
   jobReference String?
-  content      String
-  isRead       Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  content      String?    // opcional: mensagem pode conter apenas mídia
+  mediaUrl     String?
+  mediaType    MediaType?
+  isRead       Boolean    @default(false)
+  createdAt    DateTime   @default(now())
 
   sender   User @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)

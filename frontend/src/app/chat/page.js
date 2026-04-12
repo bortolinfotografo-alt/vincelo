@@ -10,9 +10,46 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/auth-context';
 import api from '@/lib/api';
-import { Send, MessageCircle, Search, X, Loader2 } from 'lucide-react';
+import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText } from 'lucide-react';
+import EmojiButton from '@/components/ui/EmojiButton';
 
 const POLLING_INTERVAL = 5000;
+
+// ── Renderiza mídia dentro de uma bolha ───────────────────────
+function MessageMedia({ mediaUrl, mediaType, isPdf }) {
+  if (!mediaUrl) return null;
+  if (isPdf) {
+    return (
+      <a
+        href={mediaUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 mt-1 underline text-sm opacity-90"
+      >
+        <FileText size={16} />
+        Abrir documento
+      </a>
+    );
+  }
+  if (mediaType === 'VIDEO') {
+    return (
+      <video
+        src={mediaUrl}
+        controls
+        className="mt-1 rounded-xl max-w-full max-h-48 object-cover"
+      />
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={mediaUrl}
+      alt="Anexo"
+      className="mt-1 rounded-xl max-w-full max-h-48 object-cover cursor-pointer"
+      onClick={() => window.open(mediaUrl, '_blank')}
+    />
+  );
+}
 
 // ── Componente interno (requer useSearchParams dentro de Suspense) ────────────
 function ChatContent() {
@@ -21,31 +58,31 @@ function ChatContent() {
   const searchParams = useSearchParams();
 
   const [conversations, setConversations] = useState([]);
-  // conversationsLoaded distingue "ainda carregando" de "carregado mas vazio"
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [loadingThread, setLoadingThread] = useState(false); // buscando usuário via URL param
+  const [loadingThread, setLoadingThread] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
 
+  // Anexo
+  const [attachFile, setAttachFile] = useState(null);   // File | null
+  const [attachPreview, setAttachPreview] = useState(null); // URL | null
+  const fileInputRef = useRef(null);
+
   const messagesEnd = useRef(null);
   const pollingRef = useRef(null);
   const selectedUserRef = useRef(null);
-  // Flag: auto-select via URL param já foi processado
   const didAutoSelect = useRef(false);
 
-  // Mantém ref sincronizada para o intervalo de polling sem stale closure
   useEffect(() => { selectedUserRef.current = selectedUser; }, [selectedUser]);
 
-  // Redireciona se não autenticado
   useEffect(() => {
     if (!authLoading && !user) router.push('/auth/login');
   }, [user, authLoading, router]);
 
-  // Carrega conversas e inicia polling quando o usuário estiver disponível
   useEffect(() => {
     if (!user) return;
     fetchConversations();
@@ -53,66 +90,52 @@ function ChatContent() {
     return () => stopPolling();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // AUTO-SELECT via ?userId=
-  // Aguarda conversationsLoaded=true (garante que o fetch terminou),
-  // independente de conversations estar vazio ou não.
-  // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (didAutoSelect.current) return;
     const targetId = searchParams.get('userId');
-    if (!targetId || !conversationsLoaded) return; // aguarda fim do carregamento
+    if (!targetId || !conversationsLoaded) return;
 
-    didAutoSelect.current = true; // marca imediatamente para evitar dupla execução
+    didAutoSelect.current = true;
 
     const existingConv = conversations.find(
       (c) => String(c.user.id) === String(targetId)
     );
 
     if (existingConv) {
-      // Conversa já existe — seleciona direto
       setSelectedUser(existingConv.user);
     } else {
-      // Sem histórico com esse usuário — busca os dados dele e abre thread em branco
       setLoadingThread(true);
       api.get(`/users/${targetId}`)
         .then((res) => {
-          // getUserById retorna o objeto do usuário no topo (não aninhado em .user)
           const u = res.data.user ?? res.data;
-          if (u?.id) {
-            setSelectedUser(u);
-          } else {
-            console.error('[Chat] Usuário não encontrado para userId:', targetId);
-          }
+          if (u?.id) setSelectedUser(u);
         })
-        .catch(() => {
-          // Falha silenciosa — usuário vê o estado vazio sem travar
-        })
+        .catch(() => {})
         .finally(() => setLoadingThread(false));
     }
   }, [conversationsLoaded, conversations, searchParams]);
 
-  // Carrega mensagens sempre que o usuário selecionado mudar
   useEffect(() => {
     if (selectedUser) fetchMessages(selectedUser.id);
     else setMessages([]);
   }, [selectedUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll automático para a última mensagem
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Funções de dados
-  // ─────────────────────────────────────────────────────────────────────────
+  // Limpa preview ao trocar de conversa
+  useEffect(() => {
+    clearAttach();
+  }, [selectedUser]);
+
   function fetchConversations() {
     api.get('/chat')
       .then((res) => setConversations(res.data.conversations || []))
       .catch(() => {})
       .finally(() => {
         setLoadingConvs(false);
-        setConversationsLoaded(true); // sinaliza que o fetch terminou, mesmo se vazio
+        setConversationsLoaded(true);
       });
   }
 
@@ -149,17 +172,49 @@ function ChatContent() {
     }
   }
 
+  // ── Gerencia anexo ──────────────────────────────────────────
+  const handleAttachSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAttachFile(file);
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      setAttachPreview(URL.createObjectURL(file));
+    } else {
+      setAttachPreview(null); // PDF: só mostra nome
+    }
+    e.target.value = '';
+  };
+
+  const clearAttach = () => {
+    setAttachFile(null);
+    setAttachPreview(null);
+  };
+
+  // ── Envia mensagem (texto e/ou anexo) ──────────────────────
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedUser || sending) return;
+    const hasText = newMessage.trim();
+    if (!hasText && !attachFile) return;
+    if (!selectedUser || sending) return;
+
     setSending(true);
     const content = newMessage.trim();
     setNewMessage('');
+    const fileToSend = attachFile;
+    clearAttach();
+
     try {
-      await api.post('/chat', { receiverId: selectedUser.id, content });
+      const data = new FormData();
+      data.append('receiverId', selectedUser.id);
+      if (content) data.append('content', content);
+      if (fileToSend) data.append('media', fileToSend);
+
+      await api.post('/chat', data, { headers: { 'Content-Type': 'multipart/form-data' } });
       fetchMessages(selectedUser.id);
       fetchConversations();
     } catch {
-      setNewMessage(content); // restaura texto se falhou
+      // Restaura em caso de erro
+      setNewMessage(content);
+      if (fileToSend) setAttachFile(fileToSend);
     } finally {
       setSending(false);
     }
@@ -169,7 +224,6 @@ function ChatContent() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  // Filtra lista pelo campo de busca
   const filtered = search.trim()
     ? conversations.filter((c) => {
         const name = (c.user.company?.companyName || c.user.name || '').toLowerCase();
@@ -177,7 +231,6 @@ function ChatContent() {
       })
     : conversations;
 
-  // Nome de exibição do usuário selecionado
   const selectedName = selectedUser
     ? (selectedUser.company?.companyName || selectedUser.name || 'Usuário')
     : '';
@@ -193,7 +246,6 @@ function ChatContent() {
 
           {/* ── Lista de conversas ─────────────────────────────────── */}
           <div className="border-r border-gray-200 dark:border-gray-800 flex flex-col">
-            {/* Campo de busca */}
             <div className="p-3 border-b border-gray-100 dark:border-gray-800">
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -215,7 +267,6 @@ function ChatContent() {
               </div>
             </div>
 
-            {/* Lista */}
             <div className="flex-1 overflow-y-auto">
               {loadingConvs ? (
                 <div className="flex flex-col gap-3 p-4">
@@ -277,7 +328,6 @@ function ChatContent() {
           {/* ── Área de chat ───────────────────────────────────────── */}
           <div className="md:col-span-2 flex flex-col">
             {loadingThread ? (
-              /* Spinner enquanto busca o usuário via URL param */
               <div className="flex-1 flex items-center justify-center">
                 <Loader2 size={28} className="animate-spin text-primary-500" />
               </div>
@@ -306,6 +356,7 @@ function ChatContent() {
                   ) : (
                     messages.map((msg) => {
                       const isMine = msg.senderId === user.id;
+                      const isPdfUrl = msg.mediaUrl?.toLowerCase().endsWith('.pdf');
                       return (
                         <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
@@ -313,7 +364,14 @@ function ChatContent() {
                               ? 'bg-primary-500 text-white rounded-br-sm'
                               : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-sm'
                           }`}>
-                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            {msg.content && (
+                              <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            )}
+                            <MessageMedia
+                              mediaUrl={msg.mediaUrl}
+                              mediaType={msg.mediaType}
+                              isPdf={isPdfUrl}
+                            />
                             <p className={`text-[10px] mt-1 ${isMine ? 'text-primary-200 text-right' : 'text-gray-400'}`}>
                               {new Date(msg.createdAt).toLocaleTimeString('pt-BR', {
                                 hour: '2-digit',
@@ -329,8 +387,50 @@ function ChatContent() {
                   <div ref={messagesEnd} />
                 </div>
 
-                {/* Input — habilitado apenas quando selectedUser está definido */}
-                <div className="p-3 border-t border-gray-200 dark:border-gray-800 flex gap-2">
+                {/* Preview do anexo */}
+                {attachFile && (
+                  <div className="px-3 pb-0 pt-2 flex items-center gap-2 border-t border-gray-100 dark:border-gray-800">
+                    <div className="relative">
+                      {attachPreview && attachFile.type.startsWith('image/') ? (
+                        <img src={attachPreview} alt="" className="h-16 w-16 object-cover rounded-lg" />
+                      ) : attachPreview && attachFile.type.startsWith('video/') ? (
+                        <video src={attachPreview} className="h-16 w-16 object-cover rounded-lg" />
+                      ) : (
+                        <div className="h-16 w-16 rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1">
+                          <FileText size={20} className="text-gray-500" />
+                          <span className="text-[10px] text-gray-500 text-center px-1 truncate w-full">PDF</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={clearAttach}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                    <span className="text-xs text-gray-500 truncate max-w-[200px]">{attachFile.name}</span>
+                  </div>
+                )}
+
+                {/* Input */}
+                <div className="p-3 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2">
+                  {/* Clipe — seleciona arquivo */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-gray-400 hover:text-primary-500 transition-colors flex-shrink-0"
+                    title="Anexar arquivo"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*,application/pdf"
+                    onChange={handleAttachSelect}
+                    className="hidden"
+                  />
+
                   <input
                     type="text"
                     value={newMessage}
@@ -342,9 +442,12 @@ function ChatContent() {
                     maxLength={2000}
                     autoFocus
                   />
+
+                  <EmojiButton onEmoji={(e) => setNewMessage((p) => p + e)} side="top" />
+
                   <button
                     onClick={sendMessage}
-                    disabled={sending || !newMessage.trim()}
+                    disabled={sending || (!newMessage.trim() && !attachFile)}
                     className="w-10 h-10 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-200 dark:disabled:bg-gray-700 text-white disabled:text-gray-400 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
                     title="Enviar (Enter)"
                   >
@@ -356,7 +459,6 @@ function ChatContent() {
               </>
 
             ) : (
-              /* Estado vazio — nenhuma conversa selecionada */
               <div className="flex-1 flex items-center justify-center text-gray-400">
                 <div className="text-center">
                   <MessageCircle size={48} className="mx-auto mb-3 opacity-30" />

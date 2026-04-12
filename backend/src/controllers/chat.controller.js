@@ -12,21 +12,24 @@ const logger = require('../utils/logger');
  */
 async function sendMessage(req, res) {
   const { receiverId, content, jobReference } = req.body;
+  const mediaUrl  = req.fileUrl || null;
+  const mediaType = req.file
+    ? (req.file.mimetype.startsWith('image') ? 'PHOTO' : req.file.mimetype === 'application/pdf' ? 'PHOTO' : 'VIDEO')
+    : null;
 
-  if (!content || !content.trim()) {
-    return res.status(400).json({ message: 'Conteudo da mensagem nao pode ser vazio' });
+  // Precisa ter texto ou mídia
+  if ((!content || !content.trim()) && !mediaUrl) {
+    return res.status(400).json({ message: 'Mensagem deve ter texto ou arquivo' });
   }
 
   if (!receiverId) {
     return res.status(400).json({ message: 'Destinatario e obrigatorio' });
   }
 
-  // Nao pode mandar mensagem para si mesmo
   if (receiverId === req.user.id) {
     return res.status(400).json({ message: 'Voce nao pode enviar mensagem para si mesmo' });
   }
 
-  // Verifica se o destinatario existe
   const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
   if (!receiver) {
     return res.status(404).json({ message: 'Destinatario nao encontrado' });
@@ -36,7 +39,9 @@ async function sendMessage(req, res) {
     data: {
       senderId: req.user.id,
       receiverId,
-      content: content.trim(),
+      content: content?.trim() || null,
+      mediaUrl,
+      mediaType,
       jobReference: jobReference || null,
     },
     include: {
@@ -143,7 +148,7 @@ async function listConversations(req, res) {
     if (!conversationMap.has(key)) {
       conversationMap.set(key, {
         user: otherUser,
-        lastMessage: msg.content,
+        lastMessage: msg.content || (msg.mediaUrl ? '[Arquivo]' : ''),
         lastMessageAt: msg.createdAt,
         unreadCount: 0,
       });
