@@ -143,16 +143,22 @@ function MessageThread({ currentUser, partner, messages, onBack, onSend }) {
                     ? 'bg-primary-500 text-white rounded-br-sm'
                     : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-bl-sm'
                 }`}>
-                  {msg.storyPreviewUrl && (
-                    <a href={`/profile/${msg.receiverId}`} className="block mb-1.5 relative group" title="Ver perfil do autor">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={msg.storyPreviewUrl} alt="Story"
-                        className="w-full max-h-36 object-cover rounded-xl opacity-90 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute inset-0 rounded-xl bg-black/20 flex items-end p-1.5">
-                        <span className="text-white text-[10px] font-medium bg-black/50 px-2 py-0.5 rounded-full">↩ Story</span>
-                      </div>
-                    </a>
-                  )}
+                  {msg.storyPreviewUrl && (() => {
+                    const isVid = /\.(mp4|mov|avi|webm)(\?|$)/i.test(msg.storyPreviewUrl);
+                    return (
+                      <button type="button" onClick={() => window.open(msg.storyPreviewUrl, '_blank')}
+                        className="block mb-1.5 relative group w-full" title="Ver story">
+                        {isVid
+                          ? <video src={msg.storyPreviewUrl} className="w-full max-h-36 object-cover rounded-xl" muted playsInline />
+                          // eslint-disable-next-line @next/next/no-img-element
+                          : <img src={msg.storyPreviewUrl} alt="Story" className="w-full max-h-36 object-cover rounded-xl opacity-90 group-hover:opacity-100 transition-opacity" />
+                        }
+                        <div className="absolute inset-0 rounded-xl bg-black/20 flex items-end p-1.5">
+                          <span className="text-white text-[10px] font-medium bg-black/50 px-2 py-0.5 rounded-full">↩ Story</span>
+                        </div>
+                      </button>
+                    );
+                  })()}
                   {msg.content && (
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   )}

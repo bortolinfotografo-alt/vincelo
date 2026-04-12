@@ -6,7 +6,7 @@ import { useAuth } from '@/app/auth-context';
 import { useTheme } from '@/app/theme-context';
 import {
   Home, Compass, Briefcase, LayoutDashboard, Plus,
-  LogOut, Sun, Moon, UserCircle, Settings, Activity, MessageCircle,
+  LogOut, Sun, Moon, UserCircle, Settings, MessageCircle,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import NotificationPanel from '@/components/ui/NotificationPanel';
@@ -100,33 +100,11 @@ export function Sidebar() {
           );
         })}
 
-        {/* ── Perfil (avatar) ── */}
-        {(() => {
-          const active = isActive(`/profile/${user?.id}`);
-          return (
-            <Link href={user ? `/profile/${user.id}` : '/auth/login'} className={itemCls}>
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt=""
-                  className={`w-[22px] h-[22px] rounded-full object-cover ring-2 transition-all ${
-                    active ? 'ring-primary-500' : 'ring-transparent'
-                  }`}
-                />
-              ) : (
-                <div className={`w-[22px] h-[22px] rounded-full flex items-center justify-center text-xs font-bold ${
-                  active
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                }`}>
-                  {user?.name?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-              )}
-              <span className={labelCls(active)}>Perfil</span>
-              {active && <span className="w-1 h-1 rounded-full bg-primary-500 mt-px" />}
-            </Link>
-          );
-        })()}
+        {/* ── Atividade (notificações) — standalone na barra ── */}
+        <div className="flex flex-col items-center gap-0.5">
+          <NotificationPanel />
+          <span className="text-[10px] font-medium text-gray-400 dark:text-gray-600">Atividade</span>
+        </div>
 
         {/* ── Config ── */}
         <div className="relative min-w-[44px]" ref={settingsRef}>
@@ -185,17 +163,6 @@ export function Sidebar() {
                 <LayoutDashboard size={16} className="text-gray-400" />
                 Dashboard
               </Link>
-
-              <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
-                {/* Notificações dentro do Config dropdown */}
-                <div className="flex items-center justify-between px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                  <span className="flex items-center gap-3">
-                    <Activity size={16} className="text-gray-400" />
-                    Atividade
-                  </span>
-                  <NotificationPanel />
-                </div>
-              </div>
 
               <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
                 <button
