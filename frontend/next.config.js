@@ -4,19 +4,15 @@ const nextConfig = {
   output: 'standalone',
 
 
-  // Proxy: redireciona /api/* para o backend (resolve problema de cookie cross-origin em dev)
+  // Proxy: redireciona /api/* para o backend (resolve problema de cookie cross-origin em dev e produção)
   async rewrites() {
-    // Apenas em ambiente de desenvolvimento
-    if (process.env.NODE_ENV === 'development') {
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:4001';
-      return [
-        {
-          source: '/api/:path*',
-          destination: `${backendUrl}/api/:path*`,
-        },
-      ];
-    }
-    return [];
+    const backendUrl = process.env.BACKEND_URL || 'https://vincelo-production.up.railway.app';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
   },
 
   images: {
