@@ -1,1 +1,0 @@
-Forçar atualização do Vercel - este arquivo não faz parte da aplicação, apenas para forçar novo deploy
