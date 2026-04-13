@@ -3,15 +3,6 @@ const nextConfig = {
   // Necessário para o Dockerfile (stage runner usa node server.js standalone)
   output: 'standalone',
 
-  // Desativa o router cache do App Router para páginas dinâmicas.
-  // Sem isso, navegar de volta para uma página serve o conteúdo antigo
-  // sem remontar o componente nem re-executar os useEffects.
-  experimental: {
-    staleTimes: {
-      dynamic: 0,  // páginas dinâmicas (com fetch ou dados de usuário): sem cache
-      static: 180, // páginas estáticas: 3 min (blogs, marketing)
-    },
-  },
 
   // Proxy: redireciona /api/* para o backend (resolve problema de cookie cross-origin em dev)
   async rewrites() {
