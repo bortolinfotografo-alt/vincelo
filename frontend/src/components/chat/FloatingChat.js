@@ -77,6 +77,7 @@ function MessageThread({ currentUser, partner, messages, onBack, onSend }) {
   const [text, setText] = useState('');
   const [attachFile, setAttachFile] = useState(null);
   const [attachPreview, setAttachPreview] = useState(null);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const endRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -213,14 +214,35 @@ function MessageThread({ currentUser, partner, messages, onBack, onSend }) {
 
       {/* Input */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="text-gray-400 hover:text-primary-500 transition-colors flex-shrink-0"
-          title="Anexar arquivo"
-        >
-          <Paperclip size={16} />
-        </button>
+        {/* Botão dropdown para selecionar tipo de anexo */}
+        <div className="relative">
+          <button
+            type="button"
+            className="text-gray-400 hover:text-primary-500 transition-colors flex-shrink-0"
+            title="Anexar arquivo"
+            onClick={() => setAttachMenuOpen(!attachMenuOpen)}
+          >
+            <Paperclip size={16} />
+          </button>
+
+          {attachMenuOpen && (
+            <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 w-40 overflow-hidden">
+              <button
+                onClick={() => { fileInputRef.current.accept = 'image/*,video/*'; fileInputRef.current.click(); setAttachMenuOpen(false); }}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              >
+                <FileText size={14} /> Enviar mídia
+              </button>
+              <button
+                onClick={() => { fileInputRef.current.accept = 'application/pdf'; fileInputRef.current.click(); setAttachMenuOpen(false); }}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              >
+                <FileText size={14} /> Enviar documento
+              </button>
+            </div>
+          )}
+        </div>
+
         <input
           ref={fileInputRef}
           type="file"

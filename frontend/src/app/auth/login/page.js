@@ -106,6 +106,22 @@ export default function LoginPage() {
           >
             {loading ? <><Loader2 size={16} className="animate-spin" /> Entrando...</> : 'Entrar'}
           </button>
+
+          {/* Login com Google */}
+          <div className="mt-4">
+            <a
+              href="/api/google-auth/google"
+              className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-sm py-3 rounded-xl transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.79 15.71 17.57V20.34H19.28C21.36 18.42 22.56 15.6 22.56 12.25Z" fill="#4285F4"/>
+                <path d="M12 23C14.97 23 17.46 22.02 19.28 20.34L15.71 17.57C14.73 18.23 13.48 18.64 12 18.64C9.14 18.64 6.71 16.69 5.84 14.09H2.18V16.96C3.99 20.53 7.7 23 12 23Z" fill="#34A853"/>
+                <path d="M5.84 14.09C5.62 13.37 5.49 12.62 5.49 11.85C5.49 11.08 5.62 10.33 5.84 9.61V6.74H2.18C1.43 8.24 1 9.96 1 11.85C1 13.74 1.43 15.46 2.18 16.96L5.84 14.09Z" fill="#FBBC05"/>
+                <path d="M12 5.36C13.62 5.36 15.06 5.93 16.21 7.03L19.36 3.88C17.45 2.07 14.97 1 12 1C7.7 1 3.99 3.47 2.18 6.74L5.84 9.61C6.71 6.92 9.14 5.36 12 5.36Z" fill="#EA4335"/>
+              </svg>
+              Entrar com Google
+            </a>
+          </div>
         </form>
 
         {/* Cadastro */}

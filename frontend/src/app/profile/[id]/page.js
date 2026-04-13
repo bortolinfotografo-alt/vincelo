@@ -305,6 +305,12 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
   const [stories, setStories] = useState([]);
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [followStats, setFollowStats] = useState(initialFollowStats);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
 
   const handleFollowChange = (data) => {
     setFollowStats((prev) => ({
@@ -320,6 +326,46 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
       .catch(() => {});
   }, [profile.id]);
 
+  const handleFollowChange = (data) => {
+    setFollowStats((prev) => ({
+      ...prev,
+      isFollowing: data.following,
+      followersCount: data.following ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
+    }));
+  };
+
+  // Função para verificar se há stories ativos (não expirados)
+  const hasActiveStories = stories.length > 0;
+
+  // Funções para buscar listas de seguidores/seguindo
+  const fetchFollowers = async () => {
+    if (followersList.length > 0) return; // Já carregado
+
+    setLoadingFollowers(true);
+    try {
+      const res = await api.get(`/follow/${profile.id}/followers`);
+      setFollowersList(res.data.users || []);
+    } catch (error) {
+      console.error('Erro ao buscar seguidores:', error);
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  const fetchFollowing = async () => {
+    if (followingList.length > 0) return; // Já carregado
+
+    setLoadingFollowing(true);
+    try {
+      const res = await api.get(`/follow/${profile.id}/following`);
+      setFollowingList(res.data.users || []);
+    } catch (error) {
+      console.error('Erro ao buscar usuários que segue:', error);
+    } finally {
+      setLoadingFollowing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -328,9 +374,9 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
           {/* Avatar + stories */}
           <div className="flex flex-col items-center gap-2">
             <button
-              onClick={() => stories.length > 0 && setStoryViewerOpen(true)}
+              onClick={() => hasActiveStories && setStoryViewerOpen(true)}
               className={`p-0.5 rounded-full ${
-                stories.length > 0
+                hasActiveStories
                   ? 'bg-gradient-to-tr from-primary-500 to-orange-400 cursor-pointer'
                   : 'bg-gray-300 cursor-default dark:bg-gray-800'
               }`}
@@ -347,7 +393,7 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
                 </div>
               </div>
             </button>
-            {stories.length > 0 && (
+            {hasActiveStories && (
               <span className="text-xs text-primary-400">Ver stories</span>
             )}
           </div>
@@ -390,11 +436,23 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
                 <span className="text-gray-900 font-bold dark:text-white">{profile._count?.posts ?? 0}</span>
                 <p className="text-xs text-gray-500">posts</p>
               </div>
-              <button className="text-center hover:opacity-80">
+              <button
+                className="text-center hover:opacity-80"
+                onClick={() => {
+                  setShowFollowers(true);
+                  fetchFollowers();
+                }}
+              >
                 <span className="text-gray-900 font-bold dark:text-white">{followStats.followersCount}</span>
                 <p className="text-xs text-gray-500">seguidores</p>
               </button>
-              <button className="text-center hover:opacity-80">
+              <button
+                className="text-center hover:opacity-80"
+                onClick={() => {
+                  setShowFollowing(true);
+                  fetchFollowing();
+                }}
+              >
                 <span className="text-gray-900 font-bold dark:text-white">{followStats.followingCount}</span>
                 <p className="text-xs text-gray-500">seguindo</p>
               </button>
@@ -403,7 +461,7 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
             {/* Bio */}
             <div className="space-y-1">
               {profile.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-300">{profile.description}</p>
+                <p className="text-sm text-gray-800 dark:text-gray-300">{profile.description}</p>
               )}
               {profile.freelancer?.location && (
                 <p className="text-sm text-gray-500 flex items-center gap-1">
@@ -453,6 +511,128 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
           onClose={() => setStoryViewerOpen(false)}
         />
       )}
+
+      {/* Modal de seguidores */}
+      {showFollowers && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Seguidores</h3>
+              <button
+                onClick={() => {
+                  setShowFollowers(false);
+                  setFollowersList([]);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingFollowers ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : followersList.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  Nenhum seguidor ainda
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {followersList.map((user) => (
+                    <div key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-300">
+                            {user.name?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {user.name}
+                        </p>
+                        {user.freelancer?.location && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {user.freelancer.location}
+                          </p>
+                        )}
+                      </div>
+
+                      <FollowButton userId={user.id} initialFollowing={false} size="sm" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de usuários que está seguindo */}
+      {showFollowing && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Seguindo</h3>
+              <button
+                onClick={() => {
+                  setShowFollowing(false);
+                  setFollowingList([]);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingFollowing ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : followingList.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  Nenhum usuário sendo seguido
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {followingList.map((user) => (
+                    <div key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-300">
+                            {user.name?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {user.name}
+                        </p>
+                        {user.freelancer?.location && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {user.freelancer.location}
+                          </p>
+                        )}
+                      </div>
+
+                      <FollowButton userId={user.id} initialFollowing={true} size="sm" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -465,6 +645,12 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
   const [stories, setStories] = useState([]);
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [followStats, setFollowStats] = useState(initialFollowStats);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
 
   const handleFollowChange = (data) => {
     setFollowStats((prev) => ({
@@ -486,7 +672,47 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
     }
   }, [profile.id]);
 
+  const handleFollowChange = (data) => {
+    setFollowStats((prev) => ({
+      ...prev,
+      isFollowing: data.following,
+      followersCount: data.following ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
+    }));
+  };
+
+  // Funções para buscar listas de seguidores/seguindo
+  const fetchFollowers = async () => {
+    if (followersList.length > 0) return; // Já carregado
+
+    setLoadingFollowers(true);
+    try {
+      const res = await api.get(`/follow/${profile.id}/followers`);
+      setFollowersList(res.data.users || []);
+    } catch (error) {
+      console.error('Erro ao buscar seguidores:', error);
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  const fetchFollowing = async () => {
+    if (followingList.length > 0) return; // Já carregado
+
+    setLoadingFollowing(true);
+    try {
+      const res = await api.get(`/follow/${profile.id}/following`);
+      setFollowingList(res.data.users || []);
+    } catch (error) {
+      console.error('Erro ao buscar usuários que segue:', error);
+    } finally {
+      setLoadingFollowing(false);
+    }
+  };
+
   const companyName = profile.company?.companyName || profile.name;
+
+  // Função para verificar se há stories ativos (não expirados)
+  const hasActiveStories = stories.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -494,9 +720,9 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start gap-6 mb-6">
           <button
-            onClick={() => stories.length > 0 && setStoryViewerOpen(true)}
+            onClick={() => hasActiveStories && setStoryViewerOpen(true)}
             className={`p-0.5 rounded-full flex-shrink-0 ${
-              stories.length > 0 ? 'bg-gradient-to-tr from-primary-500 to-orange-400' : 'bg-gray-300 dark:bg-gray-800'
+              hasActiveStories ? 'bg-gradient-to-tr from-primary-500 to-orange-400' : 'bg-gray-300 dark:bg-gray-800'
             }`}
           >
             <div className="bg-white p-1 rounded-full dark:bg-gray-950">
@@ -509,6 +735,9 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
               </div>
             </div>
           </button>
+          {hasActiveStories && (
+            <span className="text-xs text-primary-400">Ver stories</span>
+          )}
 
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3 flex-wrap">
@@ -538,8 +767,16 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
             {/* Stats empresa */}
             <div className="flex gap-6 mb-3">
               <div className="text-center">
-                <span className="text-gray-900 font-bold dark:text-white">{followStats.followersCount}</span>
-                <p className="text-xs text-gray-500">seguidores</p>
+                <button
+                  className="text-center hover:opacity-80"
+                  onClick={() => {
+                    setShowFollowers(true);
+                    fetchFollowers();
+                  }}
+                >
+                  <span className="text-gray-900 font-bold dark:text-white">{followStats.followersCount}</span>
+                  <p className="text-xs text-gray-500">seguidores</p>
+                </button>
               </div>
               <div className="text-center">
                 <span className="text-gray-900 font-bold dark:text-white">{profile._count?.posts ?? 0}</span>
@@ -556,7 +793,7 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
             </div>
 
             {profile.description && (
-              <p className="text-sm text-gray-300">{profile.description}</p>
+              <p className="text-sm text-gray-800 dark:text-gray-300">{profile.description}</p>
             )}
             {profile.company?.segment && (
               <p className="text-xs text-gray-500 mt-1">{profile.company.segment}</p>
@@ -613,6 +850,128 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
           startGroupIndex={0}
           onClose={() => setStoryViewerOpen(false)}
         />
+      )}
+
+      {/* Modal de seguidores */}
+      {showFollowers && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Seguidores</h3>
+              <button
+                onClick={() => {
+                  setShowFollowers(false);
+                  setFollowersList([]);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingFollowers ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : followersList.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  Nenhum seguidor ainda
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {followersList.map((user) => (
+                    <div key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-300">
+                            {user.name?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {user.name}
+                        </p>
+                        {user.freelancer?.location && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {user.freelancer.location}
+                          </p>
+                        )}
+                      </div>
+
+                      <FollowButton userId={user.id} initialFollowing={false} size="sm" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de usuários que está seguindo */}
+      {showFollowing && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Seguindo</h3>
+              <button
+                onClick={() => {
+                  setShowFollowing(false);
+                  setFollowingList([]);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingFollowing ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : followingList.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  Nenhum usuário sendo seguido
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {followingList.map((user) => (
+                    <div key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-300">
+                            {user.name?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {user.name}
+                        </p>
+                        {user.freelancer?.location && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {user.freelancer.location}
+                          </p>
+                        )}
+                      </div>
+
+                      <FollowButton userId={user.id} initialFollowing={true} size="sm" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -91,6 +91,7 @@ export default function NotificationPanel() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef(null);
+  const buttonRef = useRef(null);
   const pollRef = useRef(null);
 
   // ── Polling leve do contador (30s) ───────────────────────
@@ -122,8 +123,11 @@ export default function NotificationPanel() {
   // ── Abre painel: carrega lista e marca como lidas ────────
   const handleOpen = async () => {
     if (open) { setOpen(false); return; }
+
+    // Primeiro abrir para calcular dimensões
     setOpen(true);
     setLoading(true);
+
     try {
       const res = await api.get('/notifications');
       setNotifications(res.data.notifications || []);
@@ -135,14 +139,47 @@ export default function NotificationPanel() {
     }
   };
 
+  // ── Calcula posição do painel ────────────────────────────
+  const getPanelPosition = () => {
+    if (!panelRef.current || !buttonRef.current) return {};
+
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const panelHeight = panelRef.current.offsetHeight;
+    const viewportHeight = window.innerHeight;
+
+    // Calcula se cabe acima ou abaixo do botão
+    const spaceAbove = buttonRect.top;
+    const spaceBelow = viewportHeight - buttonRect.bottom;
+
+    // Prioriza abrir acima se tiver mais espaço ou se abrir abaixo ultrapassar a tela
+    if (spaceAbove > spaceBelow && spaceAbove >= panelHeight + 8) {
+      // Abre acima
+      return {
+        top: 'auto',
+        bottom: '100%',
+        marginBottom: '0.5rem', // 8px
+        right: '0',
+      };
+    } else {
+      // Abre abaixo
+      return {
+        top: '100%',
+        bottom: 'auto',
+        marginTop: '0.5rem', // 8px
+        right: '0',
+      };
+    }
+  };
+
   if (!user) return null;
 
   const groups = groupNotifications(notifications);
 
   return (
-    <div ref={panelRef} className="relative">
+    <div className="relative">
       {/* Botão ícone */}
       <button
+        ref={buttonRef}
         onClick={handleOpen}
         className="relative p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
         title="Atividade"
@@ -157,7 +194,11 @@ export default function NotificationPanel() {
 
       {/* Painel dropdown */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden dark:bg-gray-900 dark:border-gray-700">
+        <div
+          ref={panelRef}
+          className="absolute w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden dark:bg-gray-900 dark:border-gray-700"
+          style={getPanelPosition()}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Atividade</h3>
