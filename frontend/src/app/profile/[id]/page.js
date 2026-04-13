@@ -312,27 +312,11 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
   const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
 
-  const handleFollowChange = (data) => {
-    setFollowStats((prev) => ({
-      ...prev,
-      isFollowing: data.following,
-      followersCount: data.following ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
-    }));
-  };
-
   useEffect(() => {
     api.get(`/stories/user/${profile.id}`)
       .then((res) => setStories(res.data.stories || []))
       .catch(() => {});
   }, [profile.id]);
-
-  const handleFollowChange = (data) => {
-    setFollowStats((prev) => ({
-      ...prev,
-      isFollowing: data.following,
-      followersCount: data.following ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
-    }));
-  };
 
   // Função para verificar se há stories ativos (não expirados)
   const hasActiveStories = stories.length > 0;
@@ -652,14 +636,6 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
   const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
 
-  const handleFollowChange = (data) => {
-    setFollowStats((prev) => ({
-      ...prev,
-      isFollowing: data.following,
-      followersCount: data.following ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
-    }));
-  };
-
   useEffect(() => {
     api.get(`/stories/user/${profile.id}`)
       .then((res) => setStories(res.data.stories || []))
@@ -671,14 +647,6 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
         .catch(() => {});
     }
   }, [profile.id]);
-
-  const handleFollowChange = (data) => {
-    setFollowStats((prev) => ({
-      ...prev,
-      isFollowing: data.following,
-      followersCount: data.following ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
-    }));
-  };
 
   // Funções para buscar listas de seguidores/seguindo
   const fetchFollowers = async () => {
