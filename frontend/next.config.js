@@ -6,13 +6,17 @@ const nextConfig = {
 
   // Proxy: redireciona /api/* para o backend (resolve problema de cookie cross-origin em dev)
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4001';
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+    // Apenas em ambiente de desenvolvimento
+    if (process.env.NODE_ENV === 'development') {
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:4001';
+      return [
+        {
+          source: '/api/:path*',
+          destination: `${backendUrl}/api/:path*`,
+        },
+      ];
+    }
+    return [];
   },
 
   images: {
