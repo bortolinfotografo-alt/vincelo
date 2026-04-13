@@ -11,8 +11,12 @@ const path = require('path');
 const helmet = require('helmet');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
+const passport = require('passport');
 const cron = require('node-cron');
 const logger = require('./utils/logger');
+
+// Configuração do Passport
+require('./config/passport.config');
 
 // ============================================================
 // VALIDACAO DE VARIAVEIS DE AMBIENTE CRITICAS
@@ -68,6 +72,7 @@ const postRoutes = require('./routes/post.routes');
 const storyRoutes = require('./routes/story.routes');
 const followRoutes = require('./routes/follow.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const googleAuthRoutes = require('./routes/google-auth.routes');
 const { cleanExpiredStories } = require('./controllers/story.controller');
 
 const app = express();
@@ -105,6 +110,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Sanitização de inputs HTML (previne XSS armazenado)
 // Deve vir APÓS parsing e ANTES das rotas
 app.use(sanitizeBody);
+
+// Inicializa o Passport
+app.use(passport.initialize());
 
 // Serve uploads locais em modo desenvolvimento
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
@@ -146,6 +154,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/follow', followRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/google-auth', googleAuthRoutes);
 
 // Health check
 app.get('/health', async (req, res) => {

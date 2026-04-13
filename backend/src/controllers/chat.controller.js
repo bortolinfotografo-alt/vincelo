@@ -14,7 +14,7 @@ async function sendMessage(req, res) {
   const { receiverId, content, jobReference, storyPreviewUrl } = req.body;
   const mediaUrl  = req.fileUrl || null;
   const mediaType = req.file
-    ? (req.file.mimetype.startsWith('image') ? 'PHOTO' : req.file.mimetype === 'application/pdf' ? 'PHOTO' : 'VIDEO')
+    ? (req.file.mimetype.startsWith('image') ? 'PHOTO' : req.file.mimetype === 'application/pdf' ? 'DOCUMENT' : 'VIDEO')
     : null;
 
   // Precisa ter texto, mídia ou ser uma resposta a story
