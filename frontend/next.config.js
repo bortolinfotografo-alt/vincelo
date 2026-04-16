@@ -1,12 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Necessário para o Dockerfile (stage runner usa node server.js standalone)
-  output: 'standalone',
+  // standalone apenas para Docker/Railway — Vercel usa seu próprio sistema de build
+  ...(process.env.VERCEL ? {} : { output: 'standalone' }),
 
+  // Desativa cache do router para garantir conteúdo fresco ao navegar entre páginas
+  experimental: {
+    staleTimes: { dynamic: 0, static: 180 },
+  },
 
-  // Proxy: redireciona /api/* para o backend (resolve problema de cookie cross-origin em dev e produção)
+  // Proxy: redireciona /api/* para o backend (resolve cookies cross-origin em dev e produção)
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 'https://vincelo-production.up.railway.app';
+    const backendUrl = process.env.BACKEND_URL ||
+                      (process.env.NODE_ENV === 'development'
+                        ? 'http://localhost:4001'
+                        : 'https://vincelo-production.up.railway.app');
     return [
       {
         source: '/api/:path*',
