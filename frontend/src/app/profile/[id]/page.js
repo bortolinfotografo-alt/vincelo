@@ -13,7 +13,7 @@ import { useAuth } from '@/app/auth-context';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
-  MapPin, Star, MessageCircle, BadgeCheck, Grid3x3,
+  MapPin, Heart, MessageCircle, BadgeCheck, Grid3x3,
   Briefcase, ChevronRight, Play, MoreHorizontal, Trash2, Pencil, X,
 } from 'lucide-react';
 import FollowButton from '@/components/social/FollowButton';
@@ -147,7 +147,7 @@ function PostsGrid({ userId, isCurrentUser }) {
               {/* Overlay hover */}
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white text-sm font-semibold">
                 <span className="flex items-center gap-1">
-                  <Star size={14} fill="white" /> {post.likeCount}
+                  <Heart size={14} fill="white" /> {post.likeCount}
                 </span>
                 <span className="flex items-center gap-1">
                   <MessageCircle size={14} fill="white" /> {post.commentCount}
@@ -547,7 +547,7 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
                         )}
                       </div>
 
-                      <FollowButton userId={user.id} initialFollowing={false} size="sm" />
+                      <FollowButton userId={user.id} initialFollowing={user.isFollowing ?? false} size="sm" />
                     </div>
                   ))}
                 </div>
@@ -871,7 +871,7 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
                         )}
                       </div>
 
-                      <FollowButton userId={user.id} initialFollowing={false} size="sm" />
+                      <FollowButton userId={user.id} initialFollowing={user.isFollowing ?? false} size="sm" />
                     </div>
                   ))}
                 </div>

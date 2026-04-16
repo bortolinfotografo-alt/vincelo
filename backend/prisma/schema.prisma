@@ -1,6 +1,3 @@
-// Prisma Schema - Vincelo
-// Marketplace + Rede Social de freelancers para fotografia e audiovisual
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,9 +8,347 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ============================================================
-// ENUMS
-// ============================================================
+model User {
+  id               String              @id @default(uuid())
+  name             String
+  email            String              @unique
+  password         String?
+  googleId         String?             @unique
+  role             UserRole            @default(FREELANCER)
+  avatar           String?
+  phone            String?
+  description      String?
+  isActive         Boolean             @default(true)
+  emailVerified    Boolean             @default(false)
+  isVerified       Boolean             @default(false)
+  resetToken       String?
+  resetExpires     DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  receivedMessages ChatMessage[]       @relation("ReceiverMessages")
+  sentMessages     ChatMessage[]       @relation("SenderMessages")
+  company          CompanyProfile?
+  following        Follow[]            @relation("Following")
+  followers        Follow[]            @relation("Followers")
+  freelancer       FreelancerProfile?
+  actedNotifs      Notification[]      @relation("NotificationsActed")
+  notifications    Notification[]      @relation("NotificationsReceived")
+  postComments     PostComment[]       @relation("PostComments")
+  postLikes        PostLike[]          @relation("PostLikes")
+  posts            Post[]              @relation("PostsAuthored")
+  reviewsReceived  Review[]            @relation("ReviewsReceived")
+  reviewsWritten   Review[]            @relation("ReviewsWritten")
+  savedPosts       SavedPost[]         @relation("SavedPosts")
+  stories          Story[]             @relation("StoriesAuthored")
+  storyLikes       StoryLike[]         @relation("StoryLikesUser")
+  storyViews       StoryView[]         @relation("StoryViews")
+  subscription     StripeSubscription?
+
+  @@index([role, isActive])
+  @@map("users")
+}
+
+model FreelancerProfile {
+  id             String            @id @default(uuid())
+  userId         String            @unique
+  specialties    String[]
+  skills         String[]
+  location       String
+  hourlyRate     Decimal?          @db.Decimal(10, 2)
+  available      Boolean           @default(false)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedJobs   Job[]             @relation("JobsAssignedToFreelancer")
+  portfolio      PortfolioItem[]
+  proposals      Proposal[]        @relation("ProposalsByFreelancer")
+  unavailability UnavailableDate[]
+
+  @@index([available])
+  @@index([location])
+  @@map("freelancer_profiles")
+}
+
+model CompanyProfile {
+  id             String  @id @default(uuid())
+  userId         String  @unique
+  companyName    String
+  companyWebsite String?
+  companySize    String?
+  segment        String?
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postedJobs     Job[]
+
+  @@map("company_profiles")
+}
+
+model PortfolioItem {
+  id           String            @id @default(uuid())
+  freelancerId String
+  title        String
+  description  String?
+  mediaType    MediaType
+  url          String
+  thumbnailUrl String?
+  order        Int               @default(0)
+  createdAt    DateTime          @default(now())
+  freelancer   FreelancerProfile @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+
+  @@map("portfolio_items")
+}
+
+model UnavailableDate {
+  id           String            @id @default(uuid())
+  freelancerId String
+  date         DateTime          @db.Date
+  reason       String?
+  freelancer   FreelancerProfile @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+
+  @@unique([freelancerId, date])
+  @@map("unavailable_dates")
+}
+
+model Job {
+  id                 String             @id @default(uuid())
+  companyId          String
+  title              String
+  description        String
+  serviceType        String
+  location           String
+  jobDate            DateTime           @db.Date
+  jobTime            String
+  budget             Decimal            @db.Decimal(10, 2)
+  status             JobStatus          @default(OPEN)
+  assignedTo         String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  assignedFreelancer FreelancerProfile? @relation("JobsAssignedToFreelancer", fields: [assignedTo], references: [id])
+  company            CompanyProfile     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  proposals          Proposal[]
+  reviews            Review[]           @relation("ReviewJob")
+
+  @@index([status])
+  @@index([status, jobDate])
+  @@index([companyId])
+  @@index([serviceType])
+  @@map("jobs")
+}
+
+model Proposal {
+  id             String            @id @default(uuid())
+  jobId          String
+  freelancerId   String
+  coverLetter    String
+  proposedBudget Decimal?          @db.Decimal(10, 2)
+  status         ProposalStatus    @default(PENDING)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  freelancer     FreelancerProfile @relation("ProposalsByFreelancer", fields: [freelancerId], references: [id], onDelete: Cascade)
+  job            Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, freelancerId])
+  @@index([freelancerId])
+  @@index([jobId, status])
+  @@map("proposals")
+}
+
+model ChatMessage {
+  id              String     @id @default(uuid())
+  senderId        String
+  receiverId      String
+  jobReference    String?
+  content         String?
+  isRead          Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  mediaType       MediaType?
+  mediaUrl        String?
+  storyPreviewUrl String?
+  receiver        User       @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender          User       @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, receiverId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+model Review {
+  id           String   @id @default(uuid())
+  reviewerId   String
+  reviewedId   String
+  jobId        String
+  rating       Int
+  comment      String?
+  createdAt    DateTime @default(now())
+  job          Job      @relation("ReviewJob", fields: [jobId], references: [id], onDelete: Cascade)
+  reviewedUser User     @relation("ReviewsReceived", fields: [reviewedId], references: [id], onDelete: Cascade)
+  reviewer     User     @relation("ReviewsWritten", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewerId, reviewedId, jobId])
+  @@map("reviews")
+}
+
+model StripeSubscription {
+  id                   String             @id @default(uuid())
+  userId               String             @unique
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  status               SubscriptionStatus @default(INACTIVE)
+  currentPeriodEnd     DateTime?
+  lastChargeDate       DateTime?
+  nextChargeDate       DateTime?
+  planAmount           Int                @default(990)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("stripe_subscriptions")
+}
+
+model Post {
+  id            String         @id @default(uuid())
+  authorId      String
+  mediaUrl      String?
+  mediaType     MediaType?
+  aspectRatio   AspectRatio?   @default(LANDSCAPE)
+  description   String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  thumbnailUrl  String?
+  notifications Notification[]
+  comments      PostComment[]
+  likes         PostLike[]
+  media         PostMedia[]
+  author        User           @relation("PostsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  savedBy       SavedPost[]
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([authorId, createdAt])
+  @@map("posts")
+}
+
+model PostMedia {
+  id           String    @id @default(uuid())
+  postId       String
+  mediaUrl     String
+  mediaType    MediaType
+  thumbnailUrl String?
+  order        Int       @default(0)
+  post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("post_media")
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation("PostLikes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+model PostComment {
+  id        String   @id @default(uuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  author    User     @relation("PostComments", fields: [authorId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("post_comments")
+}
+
+model SavedPost {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation("SavedPosts", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("saved_posts")
+}
+
+model Story {
+  id            String         @id @default(uuid())
+  authorId      String
+  mediaUrl      String
+  mediaType     MediaType
+  caption       String?
+  createdAt     DateTime       @default(now())
+  expiresAt     DateTime
+  notifications Notification[]
+  author        User           @relation("StoriesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  likes         StoryLike[]
+  views         StoryView[]
+
+  @@index([authorId])
+  @@index([expiresAt])
+  @@map("stories")
+}
+
+model StoryLike {
+  id        String   @id @default(uuid())
+  storyId   String
+  userId    String
+  createdAt DateTime @default(now())
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User     @relation("StoryLikesUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+  @@map("story_likes")
+}
+
+model StoryView {
+  id       String   @id @default(uuid())
+  storyId  String
+  viewerId String
+  viewedAt DateTime @default(now())
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewer   User     @relation("StoryViews", fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, viewerId])
+  @@map("story_views")
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  actorId   String
+  type      NotificationType
+  postId    String?
+  storyId   String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  actor     User             @relation("NotificationsActed", fields: [actorId], references: [id], onDelete: Cascade)
+  post      Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  story     Story?           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User             @relation("NotificationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, actorId, type, postId, storyId], name: "userId_actorId_type_postId_storyId")
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
 
 enum UserRole {
   FREELANCER
@@ -51,453 +386,9 @@ enum AspectRatio {
 }
 
 enum NotificationType {
-  LIKE        // curtida em post
-  COMMENT     // comentário em post
-  FOLLOW      // novo seguidor
-  STORY_LIKE  // curtida em story
-  STORY_REPLY // resposta ao story via DM
-}
-
-// ============================================================
-// USER - tabela base de autenticacao
-// ============================================================
-
-model User {
-  id               String             @id @default(uuid())
-  name             String
-  email            String             @unique
-  password         String
-  role             UserRole
-  avatar           String?
-  phone            String?
-  description      String?
-  isActive         Boolean            @default(true)
-  emailVerified    Boolean            @default(false)
-  isVerified       Boolean            @default(false)
-  resetToken       String?
-  resetExpires     DateTime?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-
-  @@index([role, isActive])     // filtro: listagem de freelancers/empresas ativos
-
-  freelancer       FreelancerProfile?
-  company          CompanyProfile?
-
-  sentMessages     ChatMessage[]      @relation("SenderMessages")
-  receivedMessages ChatMessage[]      @relation("ReceiverMessages")
-
-  reviewsWritten   Review[]           @relation("ReviewsWritten")
-  reviewsReceived  Review[]           @relation("ReviewsReceived")
-
-  subscription     StripeSubscription?
-
-  // Rede social
-  posts            Post[]             @relation("PostsAuthored")
-  postLikes        PostLike[]         @relation("PostLikes")
-  postComments     PostComment[]      @relation("PostComments")
-  savedPosts       SavedPost[]        @relation("SavedPosts")
-  stories          Story[]            @relation("StoriesAuthored")
-  storyViews       StoryView[]        @relation("StoryViews")
-  storyLikes       StoryLike[]        @relation("StoryLikesUser")
-  following        Follow[]           @relation("Following")
-  followers        Follow[]           @relation("Followers")
-  notifications    Notification[]     @relation("NotificationsReceived")
-  actedNotifs      Notification[]     @relation("NotificationsActed")
-
-  @@map("users")
-}
-
-// ============================================================
-// FREELANCER PROFILE
-// ============================================================
-
-model FreelancerProfile {
-  id             String            @id @default(uuid())
-  userId         String            @unique
-  specialties    String[]
-  skills         String[]
-  location       String
-  hourlyRate     Decimal?          @db.Decimal(10, 2)
-  available      Boolean           @default(false)
-  portfolio      PortfolioItem[]
-  unavailability UnavailableDate[]
-  proposals      Proposal[]        @relation("ProposalsByFreelancer")
-  assignedJobs   Job[]             @relation("JobsAssignedToFreelancer")
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([available])          // filtro: disponibilidade na listagem
-  @@index([location])           // filtro: busca por localização
-  @@map("freelancer_profiles")
-}
-
-// ============================================================
-// COMPANY PROFILE
-// ============================================================
-
-model CompanyProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  companyName    String
-  companyWebsite String?
-  companySize    String?
-  segment        String?
-  postedJobs     Job[]
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("company_profiles")
-}
-
-// ============================================================
-// PORTFOLIO ITEM
-// ============================================================
-
-model PortfolioItem {
-  id           String            @id @default(uuid())
-  freelancerId String
-  title        String
-  description  String?
-  mediaType    MediaType
-  url          String
-  thumbnailUrl String?
-  order        Int               @default(0)
-  createdAt    DateTime          @default(now())
-  freelancer   FreelancerProfile @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
-
-  @@map("portfolio_items")
-}
-
-// ============================================================
-// UNAVAILABLE DATES
-// ============================================================
-
-model UnavailableDate {
-  id           String            @id @default(uuid())
-  freelancerId String
-  date         DateTime          @db.Date
-  reason       String?
-  freelancer   FreelancerProfile @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
-
-  @@unique([freelancerId, date])
-  @@map("unavailable_dates")
-}
-
-// ============================================================
-// JOB (VAGA)
-// ============================================================
-
-model Job {
-  id          String         @id @default(uuid())
-  companyId   String
-  title       String
-  description String
-  serviceType String
-  location    String
-  jobDate     DateTime       @db.Date
-  jobTime     String
-  budget      Decimal        @db.Decimal(10, 2)
-  status      JobStatus      @default(OPEN)
-  assignedTo  String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  company            CompanyProfile     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  assignedFreelancer FreelancerProfile? @relation("JobsAssignedToFreelancer", fields: [assignedTo], references: [id])
-  proposals          Proposal[]
-  reviews            Review[]           @relation("ReviewJob")
-
-  @@index([status])             // filtro: status de vagas (OPEN, IN_PROGRESS...)
-  @@index([status, jobDate])    // filtro composto: vagas abertas por data
-  @@index([companyId])          // filtro: vagas de uma empresa
-  @@index([serviceType])        // filtro: tipo de serviço
-  @@map("jobs")
-}
-
-// ============================================================
-// PROPOSAL (CANDIDATURA)
-// ============================================================
-
-model Proposal {
-  id             String         @id @default(uuid())
-  jobId          String
-  freelancerId   String
-  coverLetter    String
-  proposedBudget Decimal?       @db.Decimal(10, 2)
-  status         ProposalStatus @default(PENDING)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  job        Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  freelancer FreelancerProfile @relation("ProposalsByFreelancer", fields: [freelancerId], references: [id], onDelete: Cascade)
-
-  @@unique([jobId, freelancerId])
-  @@index([freelancerId])       // propostas de um freelancer
-  @@index([jobId, status])      // candidatos de uma vaga por status
-  @@map("proposals")
-}
-
-// ============================================================
-// CHAT MESSAGE
-// ============================================================
-
-model ChatMessage {
-  id           String     @id @default(uuid())
-  senderId     String
-  receiverId   String
-  jobReference    String?
-  content         String?    // opcional: mensagem pode conter apenas mídia
-  mediaUrl        String?
-  mediaType       MediaType?
-  storyPreviewUrl String?    // thumbnail do story quando é uma resposta via DM
-  isRead          Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-
-  sender   User @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  @@index([senderId, receiverId])
-  @@index([createdAt])
-  @@map("chat_messages")
-}
-
-// ============================================================
-// REVIEW (AVALIACAO)
-// ============================================================
-
-model Review {
-  id         String   @id @default(uuid())
-  reviewerId String
-  reviewedId String
-  jobId      String
-  rating     Int
-  comment    String?
-  createdAt  DateTime @default(now())
-
-  reviewer     User @relation("ReviewsWritten", fields: [reviewerId], references: [id], onDelete: Cascade)
-  reviewedUser User @relation("ReviewsReceived", fields: [reviewedId], references: [id], onDelete: Cascade)
-  job          Job  @relation("ReviewJob", fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@unique([reviewerId, reviewedId, jobId])
-  @@map("reviews")
-}
-
-// ============================================================
-// STRIPE SUBSCRIPTION
-// ============================================================
-
-model StripeSubscription {
-  id                   String             @id @default(uuid())
-  userId               String             @unique
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  status               SubscriptionStatus @default(INACTIVE)
-  currentPeriodEnd     DateTime?
-  lastChargeDate       DateTime?
-  nextChargeDate       DateTime?
-  planAmount           Int                @default(990)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("stripe_subscriptions")
-}
-
-// ============================================================
-// POST (REDE SOCIAL)
-// ============================================================
-
-model Post {
-  id           String       @id @default(uuid())
-  authorId     String
-  mediaUrl     String?
-  mediaType    MediaType?
-  thumbnailUrl String?
-  aspectRatio  AspectRatio? @default(LANDSCAPE)
-  description  String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  author        User           @relation("PostsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
-  likes         PostLike[]
-  comments      PostComment[]
-  savedBy       SavedPost[]
-  media         PostMedia[]
-  notifications Notification[]
-
-  @@index([authorId])
-  @@index([createdAt])
-  @@index([authorId, createdAt])  // feed do usuário paginado por data
-  @@map("posts")
-}
-
-// ============================================================
-// POST MEDIA (CARROSSEL — até 10 itens por post)
-// ============================================================
-
-model PostMedia {
-  id           String    @id @default(uuid())
-  postId       String
-  mediaUrl     String
-  mediaType    MediaType
-  thumbnailUrl String?
-  order        Int       @default(0)
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@index([postId])
-  @@map("post_media")
-}
-
-// ============================================================
-// POST LIKE (CURTIDA)
-// ============================================================
-
-model PostLike {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation("PostLikes", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@map("post_likes")
-}
-
-// ============================================================
-// POST COMMENT (COMENTARIO)
-// ============================================================
-
-model PostComment {
-  id        String   @id @default(uuid())
-  postId    String
-  authorId  String
-  content   String
-  createdAt DateTime @default(now())
-
-  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author User @relation("PostComments", fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([postId])
-  @@map("post_comments")
-}
-
-// ============================================================
-// SAVED POST (FAVORITOS)
-// ============================================================
-
-model SavedPost {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation("SavedPosts", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@map("saved_posts")
-}
-
-// ============================================================
-// STORY (HISTORIA 24H)
-// ============================================================
-
-model Story {
-  id        String    @id @default(uuid())
-  authorId  String
-  mediaUrl  String
-  mediaType MediaType
-  caption   String?
-  createdAt DateTime  @default(now())
-  expiresAt DateTime  // createdAt + 24h
-
-  author        User           @relation("StoriesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
-  views         StoryView[]
-  likes         StoryLike[]
-  notifications Notification[]
-
-  @@index([authorId])
-  @@index([expiresAt])
-  @@map("stories")
-}
-
-// ============================================================
-// STORY LIKE (CURTIDA EM STORY)
-// ============================================================
-
-model StoryLike {
-  id        String   @id @default(uuid())
-  storyId   String
-  userId    String
-  createdAt DateTime @default(now())
-
-  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  user  User  @relation("StoryLikesUser", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([storyId, userId])
-  @@map("story_likes")
-}
-
-// ============================================================
-// STORY VIEW (VISUALIZACAO)
-// ============================================================
-
-model StoryView {
-  id       String   @id @default(uuid())
-  storyId  String
-  viewerId String
-  viewedAt DateTime @default(now())
-
-  story  Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  viewer User  @relation("StoryViews", fields: [viewerId], references: [id], onDelete: Cascade)
-
-  @@unique([storyId, viewerId])
-  @@map("story_views")
-}
-
-// ============================================================
-// FOLLOW (SEGUIR)
-// ============================================================
-
-model Follow {
-  id          String   @id @default(uuid())
-  followerId  String
-  followingId String
-  createdAt   DateTime @default(now())
-
-  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
-  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
-
-  @@unique([followerId, followingId])
-  @@index([followerId])
-  @@index([followingId])
-  @@map("follows")
-}
-
-// ============================================================
-// NOTIFICATION (NOTIFICAÇÕES)
-// ============================================================
-
-model Notification {
-  id        String           @id @default(uuid())
-  userId    String           // destinatário
-  actorId   String           // quem gerou a ação
-  type      NotificationType
-  postId    String?          // referência ao post (LIKE, COMMENT)
-  storyId   String?          // referência ao story (STORY_LIKE, STORY_REPLY)
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
-
-  user  User   @relation("NotificationsReceived", fields: [userId], references: [id], onDelete: Cascade)
-  actor User   @relation("NotificationsActed", fields: [actorId], references: [id], onDelete: Cascade)
-  post  Post?  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  story Story? @relation(fields: [storyId], references: [id], onDelete: Cascade)
-
-  // Garante unicidade para upsert de likes e follows
-  @@unique([userId, actorId, type, postId, storyId], name: "userId_actorId_type_postId_storyId")
-  @@index([userId, isRead, createdAt])
-  @@map("notifications")
+  LIKE
+  COMMENT
+  FOLLOW
+  STORY_LIKE
+  STORY_REPLY
 }

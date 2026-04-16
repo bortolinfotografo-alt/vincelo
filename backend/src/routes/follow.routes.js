@@ -15,8 +15,8 @@ router.get('/suggestions', ensureAuthenticated, followController.getSuggestions)
 router.get('/:userId/status', optionalAuth, followController.getFollowStatus);
 
 // Listas
-router.get('/:userId/followers', followController.getFollowers);
-router.get('/:userId/following', followController.getFollowing);
+router.get('/:userId/followers', optionalAuth, followController.getFollowers);
+router.get('/:userId/following', optionalAuth, followController.getFollowing);
 
 // Seguir / deixar de seguir (toggle)
 router.post('/:userId', ensureAuthenticated, followController.toggleFollow);

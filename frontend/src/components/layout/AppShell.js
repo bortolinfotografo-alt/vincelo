@@ -120,8 +120,8 @@ export function AppShell({ children }) {
   if (!mounted || !splashChecked) {
     return (
       <>
-        <div className="h-16 bg-white border-b border-gray-200" />
-        <main className="flex-1">{children}</main>
+        <div className="h-16 bg-white border-b border-gray-200 dark:bg-gray-950 dark:border-gray-800" />
+        <main className="flex-1 min-h-screen pb-20">{children}</main>
       </>
     );
   }
@@ -135,8 +135,8 @@ export function AppShell({ children }) {
   if (loading) {
     return (
       <>
-        <div className="h-16 bg-white border-b border-gray-200" />
-        <main className="flex-1">{children}</main>
+        <div className="h-16 bg-white border-b border-gray-200 dark:bg-gray-950 dark:border-gray-800" />
+        <main className="flex-1 min-h-screen pb-20">{children}</main>
       </>
     );
   }

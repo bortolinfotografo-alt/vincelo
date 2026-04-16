@@ -102,7 +102,7 @@ export function Sidebar() {
 
         {/* ── Atividade (notificações) — standalone na barra ── */}
         <div className="flex flex-col items-center gap-0.5">
-          <NotificationPanel />
+          <NotificationPanel side="bottom" />
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-600">Atividade</span>
         </div>
 

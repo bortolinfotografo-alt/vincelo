@@ -91,6 +91,7 @@ async function getFollowStatus(req, res) {
 async function getFollowers(req, res) {
   const { userId } = req.params;
   const { page = 1, limit = 20 } = req.query;
+  const currentUserId = req.user?.id || null;
   const skip = (Number(page) - 1) * Number(limit);
 
   const [follows, total] = await Promise.all([
@@ -116,8 +117,22 @@ async function getFollowers(req, res) {
     prisma.follow.count({ where: { followingId: userId } }),
   ]);
 
+  // Verifica quais desses seguidores o usuário logado já segue
+  let followingSet = new Set();
+  if (currentUserId && follows.length > 0) {
+    const followerIds = follows.map((f) => f.follower.id);
+    const myFollows = await prisma.follow.findMany({
+      where: { followerId: currentUserId, followingId: { in: followerIds } },
+      select: { followingId: true },
+    });
+    followingSet = new Set(myFollows.map((f) => f.followingId));
+  }
+
   return res.json({
-    users: follows.map((f) => f.follower),
+    users: follows.map((f) => ({
+      ...f.follower,
+      isFollowing: followingSet.has(f.follower.id),
+    })),
     page: Number(page),
     totalPages: Math.ceil(total / Number(limit)),
     total,

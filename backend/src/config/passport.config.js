@@ -24,7 +24,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           });
 
           if (user) {
-            // Atualiza o token do Google se necessário
+            // Atualiza avatar e googleId se necessário
             await prisma.user.update({
               where: { id: user.id },
               data: {
@@ -41,10 +41,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             data: {
               name: profile.displayName,
               email: profile.emails[0].value,
-              avatar: profile.photos?.[0]?.value,
+              avatar: profile.photos?.[0]?.value || null,
               googleId: profile.id,
               isActive: true,
-              role: 'FREELANCER', // Role padrão para novos usuários via Google
+              emailVerified: true, // Google já verificou o e-mail
             },
           });
 

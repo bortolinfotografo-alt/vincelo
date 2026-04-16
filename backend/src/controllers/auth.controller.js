@@ -134,6 +134,11 @@ async function login(req, res) {
     return res.status(401).json({ message: 'Email ou senha invalidos' });
   }
 
+  // Usuários Google não possuem senha — deve usar login com Google
+  if (!user.password) {
+    return res.status(401).json({ message: 'Esta conta usa login com Google. Clique em "Entrar com Google".' });
+  }
+
   const isValidPassword = await comparePassword(password, user.password);
   if (!isValidPassword) {
     return res.status(401).json({ message: 'Email ou senha invalidos' });
