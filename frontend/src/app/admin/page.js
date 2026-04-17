@@ -99,20 +99,31 @@ function StatsTab() {
 }
 
 // ── Users Tab ─────────────────────────────────────────────────
+const QUICK_FILTERS = [
+  { label: 'Todos', role: null, adminRole: null },
+  { label: 'Freelancers', role: 'FREELANCER', adminRole: null },
+  { label: 'Empresas', role: 'COMPANY', adminRole: null },
+  { label: 'Admins', role: null, adminRole: '__any_admin__' },
+];
+
 function UsersTab({ myAdminRole }) {
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState(0);
   const [loading, setLoading] = useState(false);
   const [changingRole, setChangingRole] = useState(null);
 
-  const fetch = useCallback(async (p = 1, q = search) => {
+  const fetch = useCallback(async (p = 1, q = search, filterIdx = activeFilter) => {
     setLoading(true);
     try {
+      const f = QUICK_FILTERS[filterIdx];
       const params = { page: p, limit: 20 };
       if (q) params.search = q;
+      if (f.role) params.role = f.role;
+      if (f.adminRole === '__any_admin__') params.adminRole = 'MODERATOR,ADMIN,OWNER';
       const r = await api.get('/admin/users', { params });
       setUsers(r.data.users);
       setTotal(r.data.total);
@@ -120,13 +131,18 @@ function UsersTab({ myAdminRole }) {
       setPage(p);
     } catch { toast.error('Erro ao carregar usuários'); }
     finally { setLoading(false); }
-  }, [search]);
+  }, [search, activeFilter]);
 
-  useEffect(() => { fetch(1); }, []);
+  useEffect(() => { fetch(1, '', 0); }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetch(1, search);
+    fetch(1, search, activeFilter);
+  };
+
+  const handleFilter = (idx) => {
+    setActiveFilter(idx);
+    fetch(1, search, idx);
   };
 
   const handleToggleActive = async (user) => {
@@ -155,6 +171,20 @@ function UsersTab({ myAdminRole }) {
 
   return (
     <div className="space-y-4">
+      {/* Quick filters */}
+      <div className="flex gap-2 flex-wrap">
+        {QUICK_FILTERS.map((f, idx) => (
+          <button key={idx} onClick={() => handleFilter(idx)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+              activeFilter === idx
+                ? 'bg-purple-600 text-white shadow-sm'
+                : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-purple-400'
+            }`}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="flex-1 relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -167,7 +197,7 @@ function UsersTab({ myAdminRole }) {
         <button type="submit" className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition-colors">Buscar</button>
       </form>
 
-      <p className="text-xs text-gray-400">{total} usuários encontrados</p>
+      <p className="text-xs text-gray-400">{total} {QUICK_FILTERS[activeFilter].label.toLowerCase()} encontrados</p>
 
       {loading ? (
         <div className="py-8 text-center text-gray-400">Carregando...</div>

@@ -23,7 +23,10 @@ async function listUsers(req, res) {
     ];
   }
   if (role) where.role = role;
-  if (adminRole) where.adminRole = adminRole;
+  if (adminRole) {
+    const roles = adminRole.split(',').map((r) => r.trim()).filter(Boolean);
+    where.adminRole = roles.length === 1 ? roles[0] : { in: roles };
+  }
   if (isActive !== undefined) where.isActive = isActive === 'true';
 
   const [users, total] = await Promise.all([
