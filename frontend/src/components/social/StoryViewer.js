@@ -283,25 +283,38 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchEnd}
         >
-          {story.mediaType === 'VIDEO' ? (
-            <video
-              key={story.id}
-              ref={videoRef}
-              src={story.mediaUrl}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <img
-              key={story.id}
-              src={story.mediaUrl}
-              alt="Story"
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
-          )}
+          {(() => {
+            let transform = {};
+            try {
+              const p = JSON.parse(story.caption || '');
+              if (p?.transform) {
+                const { scale, panX, panY } = p.transform;
+                transform = { transform: `scale(${scale}) translate(${panX}px, ${panY}px)`, transformOrigin: 'center center' };
+              }
+            } catch { /* sem transform */ }
+
+            return story.mediaType === 'VIDEO' ? (
+              <video
+                key={story.id}
+                ref={videoRef}
+                src={story.mediaUrl}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+                style={transform}
+              />
+            ) : (
+              <img
+                key={story.id}
+                src={story.mediaUrl}
+                alt="Story"
+                className="w-full h-full object-cover"
+                draggable={false}
+                style={transform}
+              />
+            );
+          })()}
 
           {/* Zonas de navegação (hover desktop) */}
           <div className="absolute inset-y-0 left-0 w-1/3 flex items-center justify-start pl-3 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
@@ -321,14 +334,50 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
           )}
         </div>
 
-        {/* Caption */}
-        {story.caption && (
-          <div className="absolute bottom-20 left-0 right-0 z-10 px-4 pointer-events-none">
-            <p className="text-white text-sm leading-relaxed text-center bg-black/40 rounded-xl px-3 py-2">
-              {story.caption}
-            </p>
-          </div>
-        )}
+        {/* Caption / text overlays */}
+        {story.caption && (() => {
+          let parsed = null;
+          try { parsed = JSON.parse(story.caption); } catch { /* plain text */ }
+
+          if (parsed?.texts?.length > 0) {
+            return parsed.texts.map((t) => (
+              <div
+                key={t.id}
+                className="absolute z-10 pointer-events-none"
+                style={{ left: `${t.x}%`, top: `${t.y}%`, transform: 'translate(-50%, -50%)' }}
+              >
+                <span style={{
+                  color: t.color,
+                  fontSize: t.size,
+                  fontWeight: t.bold ? '700' : '400',
+                  textAlign: 'center',
+                  lineHeight: 1.3,
+                  display: 'block',
+                  maxWidth: 220,
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  textShadow: t.bg === 'none' ? '0 1px 6px rgba(0,0,0,0.9)' : 'none',
+                  ...(t.bg === 'dark'  ? { background: 'rgba(0,0,0,0.65)', padding: '5px 14px', borderRadius: 8 } : {}),
+                  ...(t.bg === 'light' ? { background: 'rgba(255,255,255,0.88)', color: '#111', padding: '5px 14px', borderRadius: 8 } : {}),
+                }}>
+                  {t.content}
+                </span>
+              </div>
+            ));
+          }
+
+          // Plain text caption (retrocompatível)
+          if (typeof story.caption === 'string' && !parsed) {
+            return (
+              <div className="absolute bottom-20 left-0 right-0 z-10 px-4 pointer-events-none">
+                <p className="text-white text-sm leading-relaxed text-center bg-black/40 rounded-xl px-3 py-2">
+                  {story.caption}
+                </p>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* ── Barra inferior: reply + like + share ── */}
         {user && (
