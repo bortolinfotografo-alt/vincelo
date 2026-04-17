@@ -148,6 +148,82 @@ async function toggleUserActive(req, res) {
 }
 
 /**
+ * GET /api/admin/posts
+ * Lista posts para moderação
+ */
+async function listPosts(req, res) {
+  const { page = 1, limit = 20, search } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const where = {};
+  if (search) {
+    where.OR = [
+      { description: { contains: search, mode: 'insensitive' } },
+      { author: { name: { contains: search, mode: 'insensitive' } } },
+    ];
+  }
+
+  const [posts, total] = await Promise.all([
+    prisma.post.findMany({
+      where,
+      skip,
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        description: true,
+        mediaUrl: true,
+        mediaType: true,
+        thumbnailUrl: true,
+        createdAt: true,
+        author: { select: { id: true, name: true, avatar: true } },
+        _count: { select: { likes: true, comments: true } },
+        media: { take: 1, select: { thumbnailUrl: true, mediaUrl: true, mediaType: true } },
+      },
+    }),
+    prisma.post.count({ where }),
+  ]);
+
+  return res.json({ posts, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+}
+
+/**
+ * GET /api/admin/stories
+ * Lista stories para moderação
+ */
+async function listStories(req, res) {
+  const { page = 1, limit = 20, search } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const where = {};
+  if (search) {
+    where.author = { name: { contains: search, mode: 'insensitive' } };
+  }
+
+  const [stories, total] = await Promise.all([
+    prisma.story.findMany({
+      where,
+      skip,
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        mediaUrl: true,
+        mediaType: true,
+        caption: true,
+        createdAt: true,
+        expiresAt: true,
+        author: { select: { id: true, name: true, avatar: true } },
+        _count: { select: { likes: true, views: true } },
+      },
+    }),
+    prisma.story.count({ where }),
+  ]);
+
+  return res.json({ stories, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+}
+
+/**
  * DELETE /api/admin/posts/:id
  * Remove um post por moderação
  */
@@ -228,4 +304,4 @@ async function getStats(req, res) {
   return res.json({ totalUsers, activeUsers, bannedUsers: totalUsers - activeUsers, totalPosts, totalStories, totalJobs, recentLogs });
 }
 
-module.exports = { listUsers, getUser, updateAdminRole, toggleUserActive, deletePost, deleteStory, listAuditLogs, getStats };
+module.exports = { listUsers, getUser, updateAdminRole, toggleUserActive, listPosts, listStories, deletePost, deleteStory, listAuditLogs, getStats };

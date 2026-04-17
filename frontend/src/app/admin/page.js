@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import {
   Shield, Users, FileText, Activity, Search, Ban, CheckCircle,
-  ChevronLeft, ChevronRight, RefreshCw, Trash2,
+  ChevronLeft, ChevronRight, RefreshCw, Trash2, Image, BookOpen,
 } from 'lucide-react';
 
 const ROLE_LEVELS = { USER: 0, MODERATOR: 1, ADMIN: 2, OWNER: 3 };
@@ -271,6 +271,163 @@ function UsersTab({ myAdminRole }) {
   );
 }
 
+// ── Moderation Tab ────────────────────────────────────────────
+function ModerationTab() {
+  const [kind, setKind] = useState('posts');
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
+
+  const fetchItems = useCallback(async (p = 1, q = search, k = kind) => {
+    setLoading(true);
+    try {
+      const params = { page: p, limit: 20 };
+      if (q) params.search = q;
+      const r = await api.get(`/admin/${k}`, { params });
+      setItems(k === 'posts' ? r.data.posts : r.data.stories);
+      setTotal(r.data.total);
+      setPages(r.data.pages);
+      setPage(p);
+    } catch { toast.error('Erro ao carregar conteúdo'); }
+    finally { setLoading(false); }
+  }, [search, kind]);
+
+  useEffect(() => { fetchItems(1, '', kind); }, [kind]);
+
+  const handleKind = (k) => {
+    setKind(k);
+    setSearch('');
+    setConfirmId(null);
+  };
+
+  const handleDelete = async (id) => {
+    if (confirmId !== id) { setConfirmId(id); return; }
+    try {
+      await api.delete(`/admin/${kind}/${id}`);
+      toast.success('Conteúdo removido');
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      setConfirmId(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erro ao remover');
+    }
+  };
+
+  const getThumb = (item) => {
+    if (kind === 'stories') return item.mediaType === 'VIDEO' ? null : item.mediaUrl;
+    const m = item.media?.[0];
+    return m?.thumbnailUrl || item.thumbnailUrl || (m?.mediaType !== 'VIDEO' ? m?.mediaUrl : null) || (item.mediaType !== 'VIDEO' ? item.mediaUrl : null);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Posts / Stories toggle */}
+      <div className="flex gap-2">
+        <button onClick={() => handleKind('posts')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${kind === 'posts' ? 'bg-purple-600 text-white' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400'}`}>
+          <Image size={13} /> Posts
+        </button>
+        <button onClick={() => handleKind('stories')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${kind === 'stories' ? 'bg-purple-600 text-white' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400'}`}>
+          <BookOpen size={13} /> Stories
+        </button>
+      </div>
+
+      {/* Search */}
+      <form onSubmit={(e) => { e.preventDefault(); fetchItems(1, search, kind); }} className="flex gap-2">
+        <div className="flex-1 relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder={kind === 'posts' ? 'Buscar por descrição ou autor...' : 'Buscar por autor...'}
+            className="w-full pl-8 pr-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400" />
+        </div>
+        <button type="submit" className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition-colors">Buscar</button>
+      </form>
+
+      <p className="text-xs text-gray-400">{total} {kind === 'posts' ? 'posts' : 'stories'} encontrados</p>
+
+      {loading ? (
+        <div className="py-8 text-center text-gray-400">Carregando...</div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => {
+            const thumb = getThumb(item);
+            const isConfirming = confirmId === item.id;
+            return (
+              <div key={item.id} className="bg-white dark:bg-gray-900 rounded-xl p-3 border border-gray-200 dark:border-gray-800 flex items-start gap-3">
+                {/* Thumbnail */}
+                <div className="w-14 h-14 rounded-lg bg-gray-100 dark:bg-gray-800 flex-shrink-0 overflow-hidden">
+                  {thumb
+                    ? <img src={thumb} alt="" className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                        {kind === 'stories' ? <BookOpen size={20} /> : <Image size={20} />}
+                      </div>}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    {item.author.avatar
+                      ? <img src={item.author.avatar} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                      : <div className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-[10px] font-bold text-primary-600 flex-shrink-0">{item.author.name.charAt(0)}</div>}
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">{item.author.name}</span>
+                  </div>
+
+                  {item.description || item.caption
+                    ? <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.description || item.caption}</p>
+                    : <p className="text-xs text-gray-400 mt-0.5 italic">Sem legenda</p>}
+
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] text-gray-400">{new Date(item.createdAt).toLocaleDateString('pt-BR')}</span>
+                    {kind === 'posts' && (
+                      <>
+                        <span className="text-[10px] text-gray-400">❤️ {item._count.likes}</span>
+                        <span className="text-[10px] text-gray-400">💬 {item._count.comments}</span>
+                      </>
+                    )}
+                    {kind === 'stories' && (
+                      <>
+                        <span className="text-[10px] text-gray-400">❤️ {item._count.likes}</span>
+                        <span className="text-[10px] text-gray-400">👁️ {item._count.views}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delete */}
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  {isConfirming ? (
+                    <>
+                      <button onClick={() => handleDelete(item.id)}
+                        className="px-2 py-1 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600 transition-colors">
+                        Confirmar
+                      </button>
+                      <button onClick={() => setConfirmId(null)}
+                        className="px-2 py-1 text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => handleDelete(item.id)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Remover">
+                      <Trash2 size={15} className="text-red-400" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Pagination page={page} pages={pages} onPage={(p) => fetchItems(p, search, kind)} />
+    </div>
+  );
+}
+
 // ── Audit Logs Tab ─────────────────────────────────────────────
 function LogsTab() {
   const [logs, setLogs] = useState([]);
@@ -359,6 +516,7 @@ export default function AdminPage() {
   const tabs = [
     { id: 'stats', label: 'Visão Geral', icon: Activity },
     { id: 'users', label: 'Usuários', icon: Users },
+    { id: 'moderation', label: 'Moderação', icon: Trash2 },
     ...(ROLE_LEVELS[user.adminRole] >= 2 ? [{ id: 'logs', label: 'Logs', icon: FileText }] : []),
   ];
 
@@ -393,6 +551,7 @@ export default function AdminPage() {
       <div className="max-w-2xl mx-auto px-4 pt-4">
         {tab === 'stats' && <StatsTab />}
         {tab === 'users' && <UsersTab myAdminRole={user.adminRole} />}
+        {tab === 'moderation' && <ModerationTab />}
         {tab === 'logs' && <LogsTab />}
       </div>
     </div>

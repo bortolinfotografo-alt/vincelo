@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { ensureAuthenticated, requireAdminRole } = require('../middlewares/auth.middleware');
-const { listUsers, getUser, updateAdminRole, toggleUserActive, deletePost, deleteStory, listAuditLogs, getStats } = require('../controllers/admin.controller');
+const { listUsers, getUser, updateAdminRole, toggleUserActive, listPosts, listStories, deletePost, deleteStory, listAuditLogs, getStats } = require('../controllers/admin.controller');
 
 const router = Router();
 
@@ -16,6 +16,8 @@ router.patch('/users/:id/admin-role', requireAdminRole('ADMIN'), updateAdminRole
 router.patch('/users/:id/toggle-active', requireAdminRole('MODERATOR'), toggleUserActive);
 
 // Content moderation
+router.get('/posts', requireAdminRole('MODERATOR'), listPosts);
+router.get('/stories', requireAdminRole('MODERATOR'), listStories);
 router.delete('/posts/:id', requireAdminRole('MODERATOR'), deletePost);
 router.delete('/stories/:id', requireAdminRole('MODERATOR'), deleteStory);
 
