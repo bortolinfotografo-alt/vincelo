@@ -146,6 +146,7 @@ async function listFreelancers(req, res) {
         specialties: f.freelancer?.specialties,
         skills: f.freelancer?.skills,
         hourlyRate: f.freelancer?.hourlyRate,
+        rateType: f.freelancer?.rateType,
         available,
         portfolio: f.freelancer?.portfolio,
         avgRating,
@@ -270,6 +271,7 @@ async function updateProfile(req, res) {
         specialties: parsedData.specialties,
         skills: parsedData.skills,
         hourlyRate: parsedData.hourlyRate ? Number(parsedData.hourlyRate) : undefined,
+        rateType: parsedData.rateType || undefined,
       },
     });
   }

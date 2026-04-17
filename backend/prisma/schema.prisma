@@ -55,6 +55,7 @@ model FreelancerProfile {
   skills         String[]
   location       String
   hourlyRate     Decimal?          @db.Decimal(10, 2)
+  rateType       RateType          @default(HOURLY)
   available      Boolean           @default(false)
   user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   assignedJobs   Job[]             @relation("JobsAssignedToFreelancer")
@@ -394,4 +395,9 @@ enum NotificationType {
   FOLLOW
   STORY_LIKE
   STORY_REPLY
+}
+
+enum RateType {
+  HOURLY
+  DAILY
 }

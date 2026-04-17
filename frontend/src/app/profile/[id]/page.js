@@ -457,9 +457,12 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
                 <p className="text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap">{profile.description}</p>
               )}
               {profile.freelancer?.location && (
-                <p className="text-sm text-gray-500 flex items-center gap-1">
+                <Link
+                  href={`/freelancers?location=${encodeURIComponent(profile.freelancer.location)}`}
+                  className="text-sm text-gray-500 flex items-center gap-1 hover:text-primary-400 transition-colors w-fit"
+                >
                   <MapPin size={13} /> {profile.freelancer.location}
-                </p>
+                </Link>
               )}
               {profile.avgRating > 0 && (
                 <p className="text-sm text-yellow-400 flex items-center gap-1">
@@ -469,7 +472,7 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
               )}
               {profile.freelancer?.hourlyRate > 0 && (
                 <p className="text-sm text-primary-400 font-medium">
-                  R$ {Number(profile.freelancer.hourlyRate).toFixed(2)}/hora
+                  R$ {Number(profile.freelancer.hourlyRate).toFixed(2)}{profile.freelancer.rateType === 'DAILY' ? '/diária' : '/hora'}
                 </p>
               )}
             </div>

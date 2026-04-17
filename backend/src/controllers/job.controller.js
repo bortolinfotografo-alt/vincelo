@@ -93,27 +93,18 @@ async function listJobs(req, res) {
     where.companyId = companyId;
     if (status) where.status = status;
   } else {
-    // Listagem pública: só vagas abertas com data futura (ou sem data)
+    // Listagem pública: só vagas abertas com data igual ou futura (UTC para evitar timezone)
     where.status = status || 'OPEN';
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    where.OR = [
-      { jobDate: null },
-      { jobDate: { gte: today } },
-    ];
+    today.setUTCHours(0, 0, 0, 0);
+    where.jobDate = { gte: today };
   }
 
   if (search) {
-    const searchCondition = [
+    where.OR = [
       { title: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
     ];
-    if (where.OR) {
-      where.AND = [{ OR: where.OR }, { OR: searchCondition }];
-      delete where.OR;
-    } else {
-      where.OR = searchCondition;
-    }
   }
 
   const [jobs, total] = await prisma.$transaction([

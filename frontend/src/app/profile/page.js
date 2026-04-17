@@ -12,6 +12,7 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Upload, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight, X, Loader2 } from 'lucide-react';
 import ImageCropper from '@/components/ui/ImageCropper';
+import CityAutocomplete from '@/components/ui/CityAutocomplete';
 
 // ── Calendário de disponibilidade ────────────────────────────
 function AvailabilityCalendar({ freelancerId, generalAvailable, onToggleGeneral, onSyncUser }) {
@@ -275,6 +276,7 @@ export default function ProfilePage() {
         specialties: user.freelancer?.specialties || [],
         skills: user.freelancer?.skills?.join(', ') || '',
         hourlyRate: user.freelancer?.hourlyRate || '',
+        rateType: user.freelancer?.rateType || 'HOURLY',
       });
       // Inicializa o toggle com o valor do contexto (já sincronizado por syncAvailableInUser)
       setGeneralAvailable(user.freelancer?.available ?? false);
@@ -291,6 +293,7 @@ export default function ProfilePage() {
       profileData.specialties = formData.specialties;
       profileData.skills = formData.skills.split(',').map(s => s.trim()).filter(Boolean);
       profileData.hourlyRate = formData.hourlyRate ? Number(formData.hourlyRate) : undefined;
+      profileData.rateType = formData.rateType;
     }
 
     try {
@@ -447,12 +450,9 @@ export default function ProfilePage() {
             <>
               <div>
                 <label className="label">Localização</label>
-                <input
-                  type="text"
+                <CityAutocomplete
                   value={formData.location}
-                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                  className="input-field"
-                  placeholder="São Paulo, SP"
+                  onChange={(val) => setFormData(prev => ({ ...prev, location: val }))}
                 />
               </div>
 
@@ -488,15 +488,26 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="label">Valor/Hora (R$)</label>
-                <input
-                  type="number"
-                  value={formData.hourlyRate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: e.target.value }))}
-                  className="input-field"
-                  placeholder="50.00"
-                  step="0.01"
-                />
+                <label className="label">Valor (R$)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={formData.hourlyRate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: e.target.value }))}
+                    className="input-field flex-1"
+                    placeholder="150.00"
+                    step="0.01"
+                    min="0"
+                  />
+                  <select
+                    value={formData.rateType}
+                    onChange={(e) => setFormData(prev => ({ ...prev, rateType: e.target.value }))}
+                    className="input-field w-28"
+                  >
+                    <option value="HOURLY">/ hora</option>
+                    <option value="DAILY">/ diária</option>
+                  </select>
+                </div>
               </div>
             </>
           )}

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import {
   Search, MapPin, Star, CalendarCheck, X, SlidersHorizontal,
@@ -143,7 +144,8 @@ function SkeletonCard() {
 }
 
 // ── Página principal ──────────────────────────────────────────
-export default function FreelancersPage() {
+function FreelancersContent() {
+  const searchParams = useSearchParams();
   const [freelancers, setFreelancers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -151,10 +153,10 @@ export default function FreelancersPage() {
 
   const [filters, setFilters] = useState({
     search: '',
-    location: '',
-    specialty: '',
+    location: searchParams.get('location') || '',
+    specialty: searchParams.get('specialty') || '',
     available: '',
-    availableOn: '', // data ISO local YYYY-MM-DD
+    availableOn: '',
   });
 
   // Debounce no campo de busca para não disparar a cada letra
@@ -362,5 +364,13 @@ export default function FreelancersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FreelancersPage() {
+  return (
+    <Suspense fallback={<div className="max-w-7xl mx-auto px-4 py-10 text-gray-400 text-center">Carregando...</div>}>
+      <FreelancersContent />
+    </Suspense>
   );
 }
