@@ -10,7 +10,7 @@
 // ============================================================
 
 import { useRef, useState, useEffect } from 'react';
-import { X, Type, Bold, RotateCw } from 'lucide-react';
+import { X, Type, Bold, RotateCw, AlignLeft, AlignCenter, AlignRight, Check } from 'lucide-react';
 
 // ── Fontes disponíveis ──────────────────────────────────────
 const FONTS = [
@@ -75,6 +75,8 @@ const BG_OPTIONS = [
   { id: 'light', label: 'Claro' },
 ];
 
+const ALIGN_CYCLE = ['center', 'left', 'right'];
+
 // ── Gera estilo do texto (editor + viewer) ──────────────────
 export function buildTextStyle(t) {
   const font = FONTS.find((f) => f.id === t.font) || FONTS[0];
@@ -85,16 +87,18 @@ export function buildTextStyle(t) {
     fontStyle: font.italic ? 'italic' : 'normal',
     letterSpacing: font.spacing ? `${font.spacing}px` : 'normal',
     fontSize: t.size,
-    lineHeight: 1.35,
-    textAlign: 'center',
+    // lineHeight maior que 1 cria gap entre as linhas do box-decoration-break
+    lineHeight: 1.75,
+    textAlign: t.align || 'center',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
-    display: 'inline-block',
-    maxWidth: '80%',
+    // inline + box-decoration-break:clone = fundo por linha (estilo Instagram)
+    display: 'inline',
+    boxDecorationBreak: 'clone',
+    WebkitBoxDecorationBreak: 'clone',
   };
 
   if (font.outline) {
-    // Texto vazado com borda colorida
     Object.assign(base, {
       WebkitTextStroke: `2px ${t.color}`,
       color: 'transparent',
@@ -114,9 +118,9 @@ export function buildTextStyle(t) {
   }
 
   if (t.bg === 'dark' && !font.glow) {
-    Object.assign(base, { background: 'rgba(0,0,0,0.65)', padding: '6px 16px', borderRadius: 8 });
+    Object.assign(base, { background: 'rgba(0,0,0,0.65)', padding: '3px 14px', borderRadius: 7 });
   } else if (t.bg === 'light' && !font.glow) {
-    Object.assign(base, { background: 'rgba(255,255,255,0.88)', padding: '6px 16px', borderRadius: 8 });
+    Object.assign(base, { background: 'rgba(255,255,255,0.90)', padding: '3px 14px', borderRadius: 7 });
   }
 
   return base;
@@ -134,15 +138,17 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
   const [scale, setScale] = useState(1);
 
   // Texto
-  const [textMode, setTextMode] = useState(false);
-  const [draft, setDraft]       = useState('');
-  const [color, setColor]       = useState('#ffffff');
-  const [bg, setBg]             = useState('dark');
-  const [bold, setBold]         = useState(false);
-  const [size, setSize]         = useState(24);
-  const [fontIdx, setFontIdx]   = useState(0);
-  const [overlays, setOverlays] = useState([]);
-  const [activeId, setActiveId] = useState(null);
+  const [textMode, setTextMode]       = useState(false);
+  const [draft, setDraft]             = useState('');
+  const [color, setColor]             = useState('#ffffff');
+  const [bg, setBg]                   = useState('none');
+  const [bold, setBold]               = useState(false);
+  const [size, setSize]               = useState(28);
+  const [fontIdx, setFontIdx]         = useState(0);
+  const [align, setAlign]             = useState('center');
+  const [overlays, setOverlays]       = useState([]);
+  const [activeId, setActiveId]       = useState(null);
+  const [editingOverlay, setEditingOverlay] = useState(null); // overlay em edição
 
   // Snap visual ao centro (linhas guia)
   const [snapLines, setSnapLines] = useState({ x: false, y: false });
@@ -283,31 +289,69 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
     didMove.current = false;
   }
 
-  // ── Cicla fonte ao clicar "Aa" no modo texto ─
+  // ── Abre modo texto (ou cicla fonte se já estiver no modo) ─
   function cycleFont() {
-    if (!textMode) { setTextMode(true); setDraft(''); return; }
+    if (!textMode) { setTextMode(true); setDraft(''); setEditingOverlay(null); return; }
     setFontIdx((i) => (i + 1) % FONTS.length);
   }
 
-  // ── Confirma texto ──────────────────────────
+  // ── Cancela modo texto (restaura overlay editado se houver) ─
+  function cancelText() {
+    if (editingOverlay) {
+      setOverlays((prev) => [...prev, editingOverlay]);
+    }
+    setDraft('');
+    setTextMode(false);
+    setEditingOverlay(null);
+  }
+
+  // ── Confirma texto ──────────────────────────────────────────
   function confirmText() {
-    if (!draft.trim()) { setTextMode(false); return; }
-    const id = nextId.current++;
-    setOverlays((prev) => [...prev, {
+    if (!draft.trim()) {
+      // Draft vazio ao editar = intenção de deletar o overlay
+      setDraft('');
+      setTextMode(false);
+      setEditingOverlay(null);
+      return;
+    }
+    const id = editingOverlay?.id ?? nextId.current++;
+    const newOverlay = {
       id,
       content: draft.trim(),
-      x: 50,
-      y: 50,
-      rotate: 0,
+      x: editingOverlay?.x ?? 50,
+      y: editingOverlay?.y ?? 50,
+      rotate: editingOverlay?.rotate ?? 0,
       color,
       bg,
       bold,
       size,
       font: FONTS[fontIdx].id,
-    }]);
+      align,
+    };
+    setOverlays((prev) => {
+      const without = prev.filter((t) => t.id !== id);
+      return [...without, newOverlay];
+    });
     setDraft('');
     setTextMode(false);
+    setEditingOverlay(null);
     setActiveId(id);
+  }
+
+  // ── Abre overlay existente para edição ──────────────────────
+  function editOverlay(id) {
+    const overlay = overlays.find((o) => o.id === id);
+    if (!overlay) return;
+    setDraft(overlay.content);
+    setColor(overlay.color);
+    setBg(overlay.bg);
+    setBold(overlay.bold);
+    setSize(overlay.size);
+    setAlign(overlay.align || 'center');
+    setFontIdx(Math.max(0, FONTS.findIndex((f) => f.id === overlay.font)));
+    setEditingOverlay(overlay);
+    setOverlays((prev) => prev.filter((t) => t.id !== id));
+    setTextMode(true);
   }
 
   // ── Publicar ────────────────────────────────
@@ -325,19 +369,19 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
   }
 
   const currentFont = FONTS[fontIdx];
-  const draftStyle  = buildTextStyle({ color, bg, bold, size, font: currentFont.id });
+  const draftStyle  = buildTextStyle({ color, bg, bold, size, font: currentFont.id, align });
 
   return (
     <div
       className="fixed inset-0 z-[60] bg-black flex flex-col"
-      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+      style={{ userSelect: textMode ? 'text' : 'none', WebkitUserSelect: textMode ? 'text' : 'none' }}
     >
       {/* ── Toolbar superior ─────────────────── */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0 z-20">
         {!textMode ? (
           <>
-            <button onClick={onCancel} className="text-white/70 hover:text-white transition-colors p-1">
-              <X size={26} />
+            <button onClick={onCancel} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white transition-colors">
+              <X size={20} />
             </button>
             <button
               onClick={cycleFont}
@@ -349,20 +393,38 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
           </>
         ) : (
           <>
-            {/* No modo texto: "Aa" cicla fonte */}
+            {/* Cancelar modo texto */}
+            <button
+              onClick={cancelText}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            {/* Cicla alinhamento */}
+            <button
+              onClick={() => setAlign((a) => { const i = ALIGN_CYCLE.indexOf(a); return ALIGN_CYCLE[(i + 1) % 3]; })}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+              title="Alinhamento"
+            >
+              {align === 'left'  && <AlignLeft  size={18} />}
+              {align === 'center' && <AlignCenter size={18} />}
+              {align === 'right' && <AlignRight size={18} />}
+            </button>
+            {/* Fonte atual */}
             <button
               onClick={cycleFont}
-              className="bg-white/15 hover:bg-white/25 text-white rounded-full px-4 py-1.5 font-bold text-sm tracking-wide transition-colors"
+              className="bg-white/15 hover:bg-white/25 text-white rounded-full px-3 py-1.5 font-bold text-sm transition-colors"
               title={`Fonte: ${currentFont.label}`}
             >
               Aa
             </button>
-            <span className="text-white/50 text-xs">{currentFont.label}</span>
+            {/* Confirmar */}
             <button
               onClick={confirmText}
-              className="bg-primary-500 hover:bg-primary-600 text-white rounded-full px-5 py-1.5 text-sm font-bold transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white text-black hover:bg-white/90 active:scale-95 transition-all shadow-lg"
+              title="Confirmar"
             >
-              Concluir
+              <Check size={18} strokeWidth={3} />
             </button>
           </>
         )}
@@ -433,22 +495,25 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
           {textMode && (
             <div
               className="absolute inset-0 flex items-center justify-center z-10"
-              style={{ background: 'rgba(0,0,0,0.22)' }}
+              style={{ background: 'rgba(0,0,0,0.22)', userSelect: 'text', WebkitUserSelect: 'text' }}
               onClick={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
             >
-              <div className="w-full px-4">
+              <div className="w-full px-6">
                 <textarea
                   ref={inputRef}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="Escreva algo..."
-                  maxLength={150}
-                  rows={3}
-                  className="bg-transparent focus:outline-none resize-none placeholder-white/40 w-full text-center block"
-                  style={draftStyle}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmText(); }
+                  maxLength={200}
+                  rows={4}
+                  className="bg-transparent focus:outline-none resize-none w-full block"
+                  style={{
+                    ...draftStyle,
+                    // display:inline do buildTextStyle não funciona em textarea — override
+                    display: 'block',
+                    width: '100%',
+                    placeholderColor: 'rgba(255,255,255,0.4)',
                   }}
                 />
               </div>
@@ -466,32 +531,44 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
                 transform: `translate(-50%, -50%) rotate(${overlay.rotate || 0}deg)`,
                 cursor: 'move',
                 touchAction: 'none',
+                maxWidth: '85%',
+                textAlign: overlay.align || 'center',
               }}
               onMouseDown={(e) => onTextDown(e, overlay.id)}
               onTouchStart={(e) => onTextDown(e, overlay.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!didMove.current) editOverlay(overlay.id);
+              }}
             >
               <span style={buildTextStyle(overlay)}>{overlay.content}</span>
 
-              {/* Controles (somente quando ativo) */}
+              {/* Alça de rotação (somente quando ativo, sem clicar) */}
               {activeId === overlay.id && (
                 <>
+                  {/* Girar */}
+                  <div
+                    className="absolute -bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-auto"
+                    style={{ touchAction: 'none' }}
+                    onMouseDown={(e) => { e.stopPropagation(); onRotateDown(e, overlay.id); }}
+                    onTouchStart={(e) => { e.stopPropagation(); onRotateDown(e, overlay.id); }}
+                  >
+                    <div className="w-px h-2 bg-white/60" />
+                    <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing">
+                      <RotateCw size={12} className="text-gray-800" />
+                    </div>
+                  </div>
                   {/* Deletar */}
-                  <button
-                    className="absolute -top-4 -right-4 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg"
+                  <div
+                    className="absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-auto"
                     onMouseDown={(e) => { e.stopPropagation(); setOverlays((p) => p.filter((t) => t.id !== overlay.id)); setActiveId(null); }}
                     onTouchStart={(e) => { e.stopPropagation(); setOverlays((p) => p.filter((t) => t.id !== overlay.id)); setActiveId(null); }}
                   >
-                    ×
-                  </button>
-                  {/* Girar */}
-                  <button
-                    className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing"
-                    onMouseDown={(e) => onRotateDown(e, overlay.id)}
-                    onTouchStart={(e) => onRotateDown(e, overlay.id)}
-                    title="Girar"
-                  >
-                    <RotateCw size={12} className="text-gray-800" />
-                  </button>
+                    <div className="w-7 h-7 bg-black/60 border border-white/30 rounded-full flex items-center justify-center cursor-pointer hover:bg-black/80 transition-colors">
+                      <X size={13} className="text-white" />
+                    </div>
+                    <div className="w-px h-2 bg-white/60" />
+                  </div>
                 </>
               )}
             </div>
