@@ -8,7 +8,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Activity, X, Heart, MessageCircle, UserPlus, Clapperboard } from 'lucide-react';
+import { Activity, X, Heart, MessageCircle, UserPlus, Clapperboard, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
@@ -20,8 +20,10 @@ function notifMeta(type) {
     case 'COMMENT':     return { label: 'comentou na sua publicação', Icon: MessageCircle,  color: 'text-blue-500'    };
     case 'FOLLOW':      return { label: 'passou a te seguir',       Icon: UserPlus,       color: 'text-green-500'   };
     case 'STORY_LIKE':  return { label: 'curtiu seu story',         Icon: Clapperboard,   color: 'text-orange-500'  };
-    case 'STORY_REPLY': return { label: 'respondeu ao seu story',   Icon: MessageCircle,  color: 'text-primary-500' };
-    default:            return { label: 'interagiu com você',       Icon: Activity,       color: 'text-gray-500'    };
+    case 'STORY_REPLY':       return { label: 'respondeu ao seu story',              Icon: MessageCircle, color: 'text-primary-500' };
+    case 'PROPOSAL_ACCEPTED': return { label: 'aceitou sua candidatura! 🎉',          Icon: CheckCircle,   color: 'text-green-500'   };
+    case 'PROPOSAL_REJECTED': return { label: 'recusou sua candidatura',              Icon: XCircle,       color: 'text-red-400'     };
+    default:                  return { label: 'interagiu com você',                   Icon: Activity,      color: 'text-gray-500'    };
   }
 }
 
@@ -30,6 +32,8 @@ function notifHref(notif) {
   if (notif.postId)  return `/feed#post-${notif.postId}`;
   if (notif.storyId) return `/feed`;
   if (notif.type === 'FOLLOW') return `/profile/${notif.actorId}`;
+  if (notif.type === 'PROPOSAL_ACCEPTED') return `/chat?userId=${notif.actorId}`;
+  if (notif.type === 'PROPOSAL_REJECTED') return `/jobs`;
   return '/feed';
 }
 

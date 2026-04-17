@@ -6,6 +6,7 @@
 const { prisma } = require('../services/db');
 const { calculateAvgRating } = require('../utils/helpers');
 const logger = require('../utils/logger');
+const { createNotification } = require('./notification.controller');
 
 /**
  * POST /api/proposals
@@ -184,26 +185,41 @@ async function updateProposalStatus(req, res) {
   }
 
   if (status === 'ACCEPTED') {
+    // Busca os outros candidatos para notificá-los depois
+    const otherProposals = await prisma.proposal.findMany({
+      where: { jobId: proposal.jobId, id: { not: proposal.id }, status: 'PENDING' },
+      include: { freelancer: { select: { userId: true } } },
+    });
+
     await prisma.$transaction([
-      // Aceita esta proposta
-      prisma.proposal.update({
-        where: { id: proposal.id },
-        data: { status: 'ACCEPTED' },
-      }),
-      // Recusa todas as outras desta vaga
+      prisma.proposal.update({ where: { id: proposal.id }, data: { status: 'ACCEPTED' } }),
       prisma.proposal.updateMany({
         where: { jobId: proposal.jobId, id: { not: proposal.id } },
         data: { status: 'REJECTED' },
       }),
-      // Atualiza status do job e atribui ao freelancer
       prisma.job.update({
         where: { id: proposal.jobId },
-        data: {
-          status: 'IN_PROGRESS',
-          assignedTo: proposal.freelancerId,
-        },
+        data: { status: 'IN_PROGRESS', assignedTo: proposal.freelancerId },
       }),
     ]);
+
+    // Notifica o freelancer aceito
+    await createNotification(proposal.freelancer.user.id, req.user.id, 'PROPOSAL_ACCEPTED');
+
+    // Mensagem automática no chat para o freelancer aceito
+    await prisma.chatMessage.create({
+      data: {
+        senderId: req.user.id,
+        receiverId: proposal.freelancer.user.id,
+        jobReference: proposal.jobId,
+        content: `Parabéns! Sua candidatura para a vaga "${proposal.job.title}" foi aceita. Vamos combinar os detalhes?`,
+      },
+    });
+
+    // Notifica os candidatos recusados
+    for (const other of otherProposals) {
+      await createNotification(other.freelancer.userId, req.user.id, 'PROPOSAL_REJECTED');
+    }
 
     logger.info('[PROPOSAL] Candidatura aceita', { proposalId: proposal.id, jobId: proposal.jobId });
   } else {
@@ -211,6 +227,9 @@ async function updateProposalStatus(req, res) {
       where: { id: proposal.id },
       data: { status: 'REJECTED' },
     });
+
+    // Notifica o freelancer recusado
+    await createNotification(proposal.freelancer.user.id, req.user.id, 'PROPOSAL_REJECTED');
 
     logger.info('[PROPOSAL] Candidatura recusada', { proposalId: proposal.id });
   }
