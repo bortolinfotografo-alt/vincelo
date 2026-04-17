@@ -345,7 +345,7 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
               <div
                 key={t.id}
                 className="absolute z-10 pointer-events-none"
-                style={{ left: `${t.x ?? 50}%`, top: `${t.y}%`, transform: `translate(-50%, -50%) rotate(${t.rotate || 0}deg)` }}
+                style={{ left: `${t.x ?? 50}%`, top: `${t.y}%`, transform: `translate(-50%, -50%) rotate(${t.rotate || 0}deg)`, width: '78%', textAlign: t.align || 'center' }}
               >
                 <span style={buildTextStyle(t)}>{t.content}</span>
               </div>

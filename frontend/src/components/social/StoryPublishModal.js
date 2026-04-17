@@ -87,15 +87,11 @@ export function buildTextStyle(t) {
     fontStyle: font.italic ? 'italic' : 'normal',
     letterSpacing: font.spacing ? `${font.spacing}px` : 'normal',
     fontSize: t.size,
-    // lineHeight maior que 1 cria gap entre as linhas do box-decoration-break
-    lineHeight: 1.75,
+    lineHeight: 1.35,
     textAlign: t.align || 'center',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
-    // inline + box-decoration-break:clone = fundo por linha (estilo Instagram)
-    display: 'inline',
-    boxDecorationBreak: 'clone',
-    WebkitBoxDecorationBreak: 'clone',
+    display: 'inline-block',
   };
 
   if (font.outline) {
@@ -118,9 +114,9 @@ export function buildTextStyle(t) {
   }
 
   if (t.bg === 'dark' && !font.glow) {
-    Object.assign(base, { background: 'rgba(0,0,0,0.65)', padding: '3px 14px', borderRadius: 7 });
+    Object.assign(base, { background: 'rgba(0,0,0,0.65)', padding: '5px 16px', borderRadius: 8 });
   } else if (t.bg === 'light' && !font.glow) {
-    Object.assign(base, { background: 'rgba(255,255,255,0.90)', padding: '3px 14px', borderRadius: 7 });
+    Object.assign(base, { background: 'rgba(255,255,255,0.90)', padding: '5px 16px', borderRadius: 8 });
   }
 
   return base;
