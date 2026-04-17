@@ -10,7 +10,7 @@ const logger = require('../utils/logger');
 function notifInclude() {
   return {
     actor: { select: { id: true, name: true, avatar: true } },
-    post:  { select: { id: true, mediaUrl: true, media: { take: 1, orderBy: { order: 'asc' }, select: { mediaUrl: true } } } },
+    post:  { select: { id: true, mediaUrl: true, thumbnailUrl: true, media: { take: 1, orderBy: { order: 'asc' }, select: { mediaUrl: true, mediaType: true, thumbnailUrl: true } } } },
     story: { select: { id: true, mediaUrl: true } },
   };
 }
@@ -32,20 +32,15 @@ async function createNotification(userId, actorId, type, meta = {}) {
     const upsertTypes = ['LIKE', 'FOLLOW', 'STORY_LIKE'];
 
     if (upsertTypes.includes(type)) {
-      await prisma.notification.upsert({
-        where: {
-          // índice único composto — criado abaixo como @@unique
-          userId_actorId_type_postId_storyId: {
-            userId,
-            actorId,
-            type,
-            postId:  meta.postId  || null,
-            storyId: meta.storyId || null,
-          },
-        },
-        create: { userId, actorId, type, postId: meta.postId || null, storyId: meta.storyId || null, isRead: false },
-        update: { isRead: false, createdAt: new Date() },
+      // Não usar upsert com campo nullable (NULL != NULL no unique index do PostgreSQL)
+      const existing = await prisma.notification.findFirst({
+        where: { userId, actorId, type, postId: meta.postId || null, storyId: meta.storyId || null },
       });
+      if (existing) {
+        await prisma.notification.update({ where: { id: existing.id }, data: { isRead: false, createdAt: new Date() } });
+      } else {
+        await prisma.notification.create({ data: { userId, actorId, type, postId: meta.postId || null, storyId: meta.storyId || null, isRead: false } });
+      }
     } else {
       await prisma.notification.create({
         data: { userId, actorId, type, postId: meta.postId || null, storyId: meta.storyId || null },

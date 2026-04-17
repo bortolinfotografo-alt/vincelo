@@ -48,10 +48,15 @@ function timeAgo(date) {
   return `${Math.floor(s / 86400)}d`;
 }
 
-// Thumbnail do post (primeiro frame do carrossel ou imagem direta)
+// Thumbnail do post — usa thumbnailUrl para evitar renderizar vídeo como <img>
 function PostThumb({ post }) {
   if (!post) return null;
-  const url = post.media?.[0]?.mediaUrl || post.mediaUrl;
+  const firstMedia = post.media?.[0];
+  const url =
+    firstMedia?.thumbnailUrl ||
+    post.thumbnailUrl ||
+    (firstMedia?.mediaType !== 'VIDEO' ? firstMedia?.mediaUrl : null) ||
+    (post.mediaUrl && !post.mediaUrl.match(/\.(mp4|mov|webm|avi)(\?|$)/i) ? post.mediaUrl : null);
   if (!url) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element
