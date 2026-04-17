@@ -335,7 +335,7 @@ function ModerationTab() {
 
   useEffect(() => { fetchItems(1, '', kind); }, [kind]);
 
-  const handleKind = (k) => { setKind(k); setSearch(''); setConfirmId(null); };
+  const handleKind = (k) => { setKind(k); setSearch(''); setConfirmId(null); setItems([]); setTotal(0); };
 
   const handleDelete = async (id) => {
     if (confirmId !== id) { setConfirmId(id); return; }
@@ -362,8 +362,7 @@ function ModerationTab() {
 
   const getViewUrl = (item) => {
     if (kind === 'jobs') return `/jobs/${item.id}`;
-    if (kind === 'stories') return `/profile/${item.author.id}`;
-    return `/profile/${item.author.id}`;
+    return `/profile/${item.author?.id}`;
   };
 
   const getTitle = (item) => {
