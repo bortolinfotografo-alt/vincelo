@@ -34,6 +34,10 @@ export default function FollowButton({
       const res = await api.post(`/follow/${userId}`);
       setFollowing(res.data.following);
       if (onFollowChange) onFollowChange(res.data);
+      // Notifica a StoriesBar para atualizar instantaneamente
+      if (res.data.following) {
+        window.dispatchEvent(new CustomEvent('followedUser', { detail: { userId } }));
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erro ao seguir');
     } finally {

@@ -70,20 +70,30 @@ export default function StoriesBar() {
   const fileInputRef = useRef(null);
 
   // ── Carrega o feed de stories ─────────────────────────────
-  // Espera auth terminar para evitar race-condition com refresh token
-  useEffect(() => {
-    if (authLoading || !user) return;
-
+  const refreshStories = () => {
+    if (!user) return;
     api.get('/stories/feed')
       .then((res) => {
         const fetched = (res.data.groups || []).map((g) => ({
           ...g,
-          stories: [...g.stories].reverse(), // mais antigo primeiro dentro do grupo
+          stories: [...g.stories].reverse(),
         }));
         setGroups(fetched);
       })
       .catch(() => {});
-  }, [authLoading, user]);
+  };
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    refreshStories();
+  }, [authLoading, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Recarrega quando o usuário segue alguém (evento global do FollowButton)
+  useEffect(() => {
+    const handler = () => refreshStories();
+    window.addEventListener('followedUser', handler);
+    return () => window.removeEventListener('followedUser', handler);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Separa próprio grupo dos outros ──────────────────────
   const ownGroup   = groups.find((g) => g.author.id === user?.id);
