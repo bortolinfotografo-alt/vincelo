@@ -6,12 +6,86 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
 import { Search, MapPin, Calendar, DollarSign, Plus, Briefcase, AlertCircle, X, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+
+// ── Autocomplete de cidades brasileiras (IBGE) ────────────────
+let _citiesCache = null;
+async function loadCities() {
+  if (_citiesCache) return _citiesCache;
+  const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome');
+  const data = await res.json();
+  _citiesCache = data.map((m) => `${m.nome}, ${m.microrregiao.mesorregiao.UF.sigla}`);
+  return _citiesCache;
+}
+
+function CityAutocomplete({ value, onChange, hasError }) {
+  const [options, setOptions] = useState([]);
+  const [open, setOpen]       = useState(false);
+  const [loading, setLoading] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleChange = async (e) => {
+    const val = e.target.value;
+    onChange(val);
+    if (val.length < 2) { setOptions([]); setOpen(false); return; }
+    setLoading(true);
+    try {
+      const cities = await loadCities();
+      const q = val.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const filtered = cities
+        .filter((c) => c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q))
+        .slice(0, 8);
+      setOptions(filtered);
+      setOpen(filtered.length > 0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelect = (city) => { onChange(city); setOpen(false); };
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={handleChange}
+        onFocus={() => options.length > 0 && setOpen(true)}
+        placeholder="São Paulo, SP"
+        autoComplete="off"
+        className={`input-field ${hasError ? 'border-red-400' : ''}`}
+      />
+      {loading && (
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">...</span>
+      )}
+      {open && (
+        <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden max-h-52 overflow-y-auto">
+          {options.map((city) => (
+            <li
+              key={city}
+              onMouseDown={() => handleSelect(city)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <MapPin size={12} className="text-gray-400 flex-shrink-0" />
+              {city}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const SERVICE_TYPES = ['fotografia', 'video', 'drone', 'edicao', 'design', 'evento'];
 
@@ -262,13 +336,13 @@ export default function JobsPage() {
 
             <div>
               <label className="label">Local *</label>
-              <input
-                type="text"
-                name="location"
+              <CityAutocomplete
                 value={formData.location}
-                onChange={handleInputChange}
-                className={`input-field ${formErrors.location ? 'border-red-400' : ''}`}
-                placeholder="Sao Paulo, SP"
+                onChange={(val) => {
+                  setFormData((prev) => ({ ...prev, location: val }));
+                  if (formErrors.location) setFormErrors((prev) => ({ ...prev, location: undefined }));
+                }}
+                hasError={!!formErrors.location}
               />
               <FieldError message={formErrors.location} />
             </div>
