@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Eye, BadgeCheck, Pause, Play, Heart, Share2, Send } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Eye, BadgeCheck, Pause, Play, Heart, Share2, Send, Trash2 } from 'lucide-react';
 import StoryProgressBar from './StoryProgressBar';
 import { buildTextStyle } from './StoryPublishModal';
 import api from '@/lib/api';
@@ -178,6 +178,32 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     } catch {}
   };
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteStory = async (e) => {
+    e.stopPropagation();
+    if (!confirmDelete) { setConfirmDelete(true); setPaused(true); return; }
+    setDeleting(true);
+    try {
+      await api.delete(`/stories/${story.id}`);
+      toast.success('Story excluído');
+      // Remove story do grupo local e avança ou fecha
+      const remaining = group.stories.filter((s) => s.id !== story.id);
+      if (remaining.length === 0) {
+        onClose();
+      } else {
+        goNext();
+      }
+    } catch {
+      toast.error('Erro ao excluir story');
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+      setPaused(false);
+    }
+  };
+
   if (!group || !story) return null;
 
   const isAuthor = user?.id === story.authorId;
@@ -264,15 +290,42 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
             {isPaused ? <Play size={18} /> : <Pause size={18} />}
           </button>
 
-          {/* Views — só para autor */}
+          {/* Views + Deletar — só para autor */}
           {isAuthor && (
-            <button
-              onClick={loadViewers}
-              className="text-white/70 hover:text-white p-1 transition-colors"
-              title="Ver visualizações"
-            >
-              <Eye size={18} />
-            </button>
+            <>
+              <button
+                onClick={loadViewers}
+                className="text-white/70 hover:text-white p-1 transition-colors"
+                title="Ver visualizações"
+              >
+                <Eye size={18} />
+              </button>
+              {confirmDelete ? (
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); setPaused(false); }}
+                    className="text-xs text-white/70 hover:text-white px-2 py-1 rounded-full border border-white/30 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteStory}
+                    disabled={deleting}
+                    className="text-xs text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded-full font-medium transition-colors disabled:opacity-50"
+                  >
+                    {deleting ? '...' : 'Excluir'}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleDeleteStory}
+                  className="text-white/70 hover:text-red-400 p-1 transition-colors"
+                  title="Excluir story"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </>
           )}
         </div>
 
