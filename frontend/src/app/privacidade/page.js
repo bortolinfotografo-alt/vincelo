@@ -48,7 +48,7 @@ export default function PrivacidadePage() {
 
         <section>
           <h2 className="text-lg font-bold text-surface-900 mb-2">8. Contato</h2>
-          <p>Para exercer seus direitos ou tirar duvidas sobre privacidade: <a href="mailto:privacidade@vincelo.com.br" className="text-primary-600 hover:underline">privacidade@vincelo.com.br</a></p>
+          <p>Para exercer seus direitos ou tirar duvidas sobre privacidade: <a href="mailto:vincelofreelancers@gmail.com" className="text-primary-600 hover:underline">vincelofreelancers@gmail.com</a></p>
         </section>
       </div>
     </div>

@@ -43,7 +43,7 @@ export default function TermosPage() {
 
         <section>
           <h2 className="text-lg font-bold text-surface-900 mb-2">8. Contato</h2>
-          <p>Duvidas sobre estes termos: <a href="mailto:juridico@vincelo.com.br" className="text-primary-600 hover:underline">juridico@vincelo.com.br</a></p>
+          <p>Duvidas sobre estes termos: <a href="mailto:vincelofreelancers@gmail.com" className="text-primary-600 hover:underline">vincelofreelancers@gmail.com</a></p>
         </section>
       </div>
     </div>
