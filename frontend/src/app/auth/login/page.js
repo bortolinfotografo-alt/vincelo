@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/app/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -9,8 +9,13 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
+
+  // Se já está logado, vai direto pro feed
+  useEffect(() => {
+    if (user) router.replace('/feed');
+  }, [user, router]);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
