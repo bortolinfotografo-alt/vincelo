@@ -15,7 +15,13 @@ async function sendMessage(req, res) {
   const { receiverId, content, jobReference, storyPreviewUrl } = req.body;
   const mediaUrl  = req.fileUrl || null;
   const mediaType = req.file
-    ? (req.file.mimetype.startsWith('image') ? 'PHOTO' : req.file.mimetype === 'application/pdf' ? 'DOCUMENT' : 'VIDEO')
+    ? (() => {
+        const mime = req.file.mimetype || '';
+        const ext  = require('path').extname(req.file.originalname || '').toLowerCase();
+        if (mime.startsWith('image') || ['.jpg','.jpeg','.png','.webp','.gif'].includes(ext)) return 'PHOTO';
+        if (mime === 'application/pdf' || ext === '.pdf') return 'DOCUMENT';
+        return 'VIDEO';
+      })()
     : null;
 
   // Precisa ter texto, mídia ou ser uma resposta a story

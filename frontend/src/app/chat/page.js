@@ -222,11 +222,17 @@ function ChatContent() {
   const handleAttachSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Detecta tipo pelo mimetype OU pela extensão (fallback para Windows screenshots)
+    const ext = file.name.split('.').pop().toLowerCase();
+    const imageExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    const videoExts = ['mp4', 'mov', 'avi', 'webm'];
+    const isImage = file.type.startsWith('image/') || imageExts.includes(ext);
+    const isVideo = file.type.startsWith('video/') || videoExts.includes(ext);
     setAttachFile(file);
-    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+    if (isImage || isVideo) {
       setAttachPreview(URL.createObjectURL(file));
     } else {
-      setAttachPreview(null); // PDF: só mostra nome
+      setAttachPreview(null);
     }
     e.target.value = '';
   };
@@ -451,16 +457,19 @@ function ChatContent() {
                 {attachFile && (
                   <div className="px-3 pb-0 pt-2 flex items-center gap-2 border-t border-gray-100 dark:border-gray-800">
                     <div className="relative">
-                      {attachPreview && attachFile.type.startsWith('image/') ? (
-                        <img src={attachPreview} alt="" className="h-16 w-16 object-cover rounded-lg" />
-                      ) : attachPreview && attachFile.type.startsWith('video/') ? (
-                        <video src={attachPreview} className="h-16 w-16 object-cover rounded-lg" />
-                      ) : (
-                        <div className="h-16 w-16 rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1">
-                          <FileText size={20} className="text-gray-500" />
-                          <span className="text-[10px] text-gray-500 text-center px-1 truncate w-full">PDF</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const ext = attachFile.name.split('.').pop().toLowerCase();
+                        const isImg = attachFile.type.startsWith('image/') || ['jpg','jpeg','png','webp','gif'].includes(ext);
+                        const isVid = attachFile.type.startsWith('video/') || ['mp4','mov','avi','webm'].includes(ext);
+                        if (attachPreview && isImg) return <img src={attachPreview} alt="" className="h-16 w-16 object-cover rounded-lg" />;
+                        if (attachPreview && isVid) return <video src={attachPreview} className="h-16 w-16 object-cover rounded-lg" />;
+                        return (
+                          <div className="h-16 w-16 rounded-lg bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center gap-1">
+                            <FileText size={20} className="text-gray-500" />
+                            <span className="text-[10px] text-gray-500 text-center px-1 truncate w-full">{ext.toUpperCase()}</span>
+                          </div>
+                        );
+                      })()}
                       <button
                         onClick={clearAttach}
                         className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center"

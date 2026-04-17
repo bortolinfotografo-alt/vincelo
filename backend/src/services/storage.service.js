@@ -41,8 +41,23 @@ const ALLOWED_MIMES = [
 
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.mov', '.avi', '.pdf'];
 
+const EXT_TO_MIME = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+  '.webp': 'image/webp', '.gif': 'image/gif',
+  '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.avi': 'video/x-msvideo',
+  '.pdf': 'application/pdf',
+};
+
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
+
+  // Fallback: se o browser não enviou mimetype correto, infere pela extensão
+  if (!file.mimetype || file.mimetype === 'application/octet-stream') {
+    const inferred = EXT_TO_MIME[ext];
+    if (inferred) {
+      file.mimetype = inferred;
+    }
+  }
 
   if (!ALLOWED_MIMES.includes(file.mimetype)) {
     return cb(new Error('Formato de arquivo nao permitido. Use JPG, PNG, WebP, GIF, MP4 ou MOV.'), false);
