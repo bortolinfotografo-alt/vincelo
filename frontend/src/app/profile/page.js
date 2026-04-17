@@ -438,7 +438,7 @@ export default function ProfilePage() {
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               className="input-field"
-              rows={3}
+              rows={4}
               placeholder="Fale sobre você..."
             />
           </div>

@@ -12,7 +12,7 @@ const updateProfileSchema = z.object({
     .regex(/^[\d\s\+\-\(\)]*$/, 'Telefone inválido')
     .optional()
     .nullable(),
-  description: z.string().max(1000).trim().optional().nullable(),
+  description: z.string().max(1000).optional().nullable(),
   profileData: z
     .union([
       z.string().transform((s) => {

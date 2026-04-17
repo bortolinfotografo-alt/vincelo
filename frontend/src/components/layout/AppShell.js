@@ -56,19 +56,14 @@ export function AppShell({ children }) {
   const [splashDone, setSplashDone] = useState(false);
   const [splashChecked, setSplashChecked] = useState(false);
 
-  // ── Dark mode: só aplica quando logado ───────────────────────
+  // ── Dark mode: aplica apenas quando auth resolve ─────────────
   useEffect(() => {
+    if (loading) return; // script inline já aplicou o estado correto
     const html = document.documentElement;
-    if (loading) {
-      // Garante modo claro enquanto verifica autenticação
-      html.classList.remove('dark');
-      return;
-    }
     if (!user) {
       html.classList.remove('dark');
     } else {
       const saved = localStorage.getItem('theme') || 'dark';
-      // Persiste para o ThemeProvider restaurar na próxima visita
       if (!localStorage.getItem('theme')) localStorage.setItem('theme', 'dark');
       if (saved === 'dark') html.classList.add('dark');
       else html.classList.remove('dark');

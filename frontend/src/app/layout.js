@@ -1,4 +1,3 @@
-import Script from 'next/script';
 import { AppShell } from '@/components/layout/AppShell';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import Providers from './providers';
@@ -27,11 +26,9 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen flex flex-col bg-white">
-        {/* Remove dark antes do primeiro paint — evita tela preta no mobile */}
-        <Script id="remove-dark" strategy="beforeInteractive">
-          {`document.documentElement.classList.remove('dark')`}
-        </Script>
+      <body className="min-h-screen flex flex-col">
+        {/* Aplica dark antes do primeiro paint — evita flash branco para usuários logados */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var rt=localStorage.getItem('_rt');var t=localStorage.getItem('theme')||'dark';if(rt&&t==='dark')document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
         <ErrorBoundary>
           <Providers>
             <AppShell>{children}</AppShell>

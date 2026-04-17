@@ -363,8 +363,9 @@ function FeedContent() {
           )}
 
           {/* ── Coluna principal ── */}
+          <div className="flex-1 min-w-0">
           <PullToRefresh onRefresh={() => loadPosts(1, true)}>
-          <div className="flex-1 min-w-0 max-w-2xl mx-auto w-full space-y-4">
+          <div className="max-w-2xl mx-auto w-full space-y-4">
             {user && <StoriesBar />}
 
             <SearchBar
@@ -413,6 +414,7 @@ function FeedContent() {
             )}
           </div>
           </PullToRefresh>
+          </div>
 
           {/* ── Sidebar direita — Perfil + Sugestões (lg+) ── */}
           {user && (
