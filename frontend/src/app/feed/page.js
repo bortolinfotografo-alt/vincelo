@@ -356,7 +356,7 @@ function FeedContent() {
           {/* ── Sidebar esquerda — Vagas Recentes (xl+) ── */}
           {user && (
             <aside className="w-60 flex-shrink-0 hidden xl:block">
-              <div className="sticky top-6">
+              <div className="sticky top-6 space-y-4">
                 <VagasRecentesPanel />
               </div>
             </aside>
@@ -364,7 +364,7 @@ function FeedContent() {
 
           {/* ── Coluna principal ── */}
           <PullToRefresh onRefresh={() => loadPosts(1, true)}>
-          <div className="flex-1 min-w-0 space-y-4">
+          <div className="flex-1 min-w-0 max-w-2xl mx-auto w-full space-y-4">
             {user && <StoriesBar />}
 
             <SearchBar
@@ -416,7 +416,7 @@ function FeedContent() {
 
           {/* ── Sidebar direita — Perfil + Sugestões (lg+) ── */}
           {user && (
-            <aside className="w-64 flex-shrink-0 hidden lg:block">
+            <aside className="w-64 flex-shrink-0 hidden xl:block">
               <div className="sticky top-6 space-y-4">
                 {/* Perfil resumido */}
                 <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 dark:bg-gray-900 dark:border-gray-800">

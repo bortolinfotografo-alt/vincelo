@@ -88,7 +88,7 @@ export default function MediaCarousel({ post }) {
   const current = items[index];
   const isPortrait = post.aspectRatio === 'PORTRAIT';
   const wrapperClass = isPortrait ? 'bg-black flex justify-center' : 'bg-black';
-  const innerClass = isPortrait ? 'w-full max-w-[340px] aspect-[9/16]' : 'w-full aspect-video';
+  const innerClass = isPortrait ? 'w-full max-w-[340px] aspect-[9/16]' : 'w-full aspect-square';
 
   const goPrev = () => setIndex((i) => Math.max(0, i - 1));
   const goNext = () => setIndex((i) => Math.min(items.length - 1, i + 1));
