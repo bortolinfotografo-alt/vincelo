@@ -344,8 +344,8 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
             return parsed.texts.map((t) => (
               <div
                 key={t.id}
-                className="absolute inset-x-0 z-10 pointer-events-none px-4"
-                style={{ top: `${t.y}%`, transform: 'translateY(-50%)', textAlign: 'center' }}
+                className="absolute z-10 pointer-events-none"
+                style={{ left: `${t.x ?? 50}%`, top: `${t.y}%`, transform: `translate(-50%, -50%) rotate(${t.rotate || 0}deg)` }}
               >
                 <span style={buildTextStyle(t)}>{t.content}</span>
               </div>

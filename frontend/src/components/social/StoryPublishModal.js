@@ -10,7 +10,7 @@
 // ============================================================
 
 import { useRef, useState, useEffect } from 'react';
-import { X, Type, Bold } from 'lucide-react';
+import { X, Type, Bold, RotateCw } from 'lucide-react';
 
 // ── Fontes disponíveis ──────────────────────────────────────
 const FONTS = [
@@ -89,8 +89,8 @@ export function buildTextStyle(t) {
     textAlign: 'center',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
-    display: 'block',
-    width: '100%',
+    display: 'inline-block',
+    maxWidth: '80%',
   };
 
   if (font.outline) {
@@ -144,8 +144,8 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
   const [overlays, setOverlays] = useState([]);
   const [activeId, setActiveId] = useState(null);
 
-  // Snap visual ao centro
-  const [snapVisible, setSnapVisible] = useState(false);
+  // Snap visual ao centro (linhas guia)
+  const [snapLines, setSnapLines] = useState({ x: false, y: false });
 
   const [loading, setLoading] = useState(false);
 
@@ -154,10 +154,11 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
   const nextId       = useRef(1);
 
   // Refs de drag (sem re-render)
-  const mediaDrag = useRef({ active: false, sx: 0, sy: 0, spx: 0, spy: 0 });
-  const pinchRef  = useRef({ active: false, startDist: 0, startScale: 1 });
-  const textDrag  = useRef({ active: false, id: null, sy: 0, sty: 0 });
-  const didMove   = useRef(false);
+  const mediaDrag  = useRef({ active: false, sx: 0, sy: 0, spx: 0, spy: 0 });
+  const pinchRef   = useRef({ active: false, startDist: 0, startScale: 1 });
+  const textDrag   = useRef({ active: false, id: null, sx: 0, sy: 0, stx: 50, sty: 50 });
+  const rotateDrag = useRef({ active: false, id: null, cx: 0, cy: 0, startAngle: 0, startRotate: 0 });
+  const didMove    = useRef(false);
 
   useEffect(() => {
     if (textMode) setTimeout(() => inputRef.current?.focus(), 80);
@@ -192,21 +193,41 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
       return;
     }
 
-    // Text drag (somente Y)
+    // Rotate drag
+    if (rotateDrag.current.active) {
+      const [px, py] = clientXY(e);
+      const { cx, cy, startAngle, startRotate } = rotateDrag.current;
+      const angle = Math.atan2(py - cy, px - cx) * (180 / Math.PI);
+      let newRotate = startRotate + (angle - startAngle);
+      // Snap a 0°, ±45°, ±90°, 180°
+      const snaps = [0, 45, -45, 90, -90, 135, -135, 180, -180];
+      for (const s of snaps) {
+        if (Math.abs(newRotate - s) < 5) { newRotate = s; break; }
+      }
+      setOverlays((prev) => prev.map((t) => t.id === rotateDrag.current.id ? { ...t, rotate: newRotate } : t));
+      didMove.current = true;
+      return;
+    }
+
+    // Text drag (X e Y)
     if (textDrag.current.active) {
       const container = containerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      const [, cy] = clientXY(e);
+      const [cx, cy] = clientXY(e);
+      const dx = ((cx - textDrag.current.sx) / rect.width) * 100;
       const dy = ((cy - textDrag.current.sy) / rect.height) * 100;
+      let nx = Math.max(5, Math.min(95, textDrag.current.stx + dx));
       let ny = Math.max(5, Math.min(95, textDrag.current.sty + dy));
 
       // Snap ao centro (±3%)
-      const snapping = Math.abs(ny - 50) < 3;
-      setSnapVisible(snapping);
-      if (snapping) ny = 50;
+      const snapX = Math.abs(nx - 50) < 3;
+      const snapY = Math.abs(ny - 50) < 3;
+      setSnapLines({ x: snapX, y: snapY });
+      if (snapX) nx = 50;
+      if (snapY) ny = 50;
 
-      setOverlays((prev) => prev.map((t) => t.id === textDrag.current.id ? { ...t, y: ny } : t));
+      setOverlays((prev) => prev.map((t) => t.id === textDrag.current.id ? { ...t, x: nx, y: ny } : t));
       didMove.current = true;
       return;
     }
@@ -223,10 +244,11 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
   }
 
   function onUp() {
-    mediaDrag.current.active = false;
-    textDrag.current.active  = false;
-    pinchRef.current.active  = false;
-    setSnapVisible(false);
+    mediaDrag.current.active  = false;
+    textDrag.current.active   = false;
+    rotateDrag.current.active = false;
+    pinchRef.current.active   = false;
+    setSnapLines({ x: false, y: false });
   }
 
   function onWheel(e) {
@@ -239,9 +261,25 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
   function onTextDown(e, id) {
     e.stopPropagation();
     setActiveId(id);
-    const [, cy] = clientXY(e);
+    const [cx, cy] = clientXY(e);
     const t = overlays.find((o) => o.id === id);
-    textDrag.current = { active: true, id, sy: cy, sty: t.y };
+    textDrag.current = { active: true, id, sx: cx, sy: cy, stx: t.x ?? 50, sty: t.y };
+    didMove.current = false;
+  }
+
+  // ── Rotate drag start ───────────────────────
+  function onRotateDown(e, id) {
+    e.stopPropagation();
+    e.preventDefault();
+    const container = containerRef.current;
+    const overlay = overlays.find((o) => o.id === id);
+    if (!container || !overlay) return;
+    const rect = container.getBoundingClientRect();
+    const cx = rect.left + ((overlay.x ?? 50) / 100) * rect.width;
+    const cy = rect.top  + (overlay.y / 100) * rect.height;
+    const [px, py] = clientXY(e);
+    const startAngle = Math.atan2(py - cy, px - cx) * (180 / Math.PI);
+    rotateDrag.current = { active: true, id, cx, cy, startAngle, startRotate: overlay.rotate || 0 };
     didMove.current = false;
   }
 
@@ -258,7 +296,9 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
     setOverlays((prev) => [...prev, {
       id,
       content: draft.trim(),
+      x: 50,
       y: 50,
+      rotate: 0,
       color,
       bg,
       bold,
@@ -377,10 +417,15 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
             </div>
           )}
 
-          {/* Linha de snap central (aparece ao arrastar texto perto do centro) */}
-          {snapVisible && (
+          {/* Linhas guia de snap (centro horizontal e vertical) */}
+          {snapLines.y && (
             <div className="absolute inset-x-0 top-1/2 pointer-events-none z-20">
               <div className="w-full h-px bg-white/60" style={{ boxShadow: '0 0 4px rgba(255,255,255,0.8)' }} />
+            </div>
+          )}
+          {snapLines.x && (
+            <div className="absolute inset-y-0 left-1/2 pointer-events-none z-20">
+              <div className="h-full w-px bg-white/60" style={{ boxShadow: '0 0 4px rgba(255,255,255,0.8)' }} />
             </div>
           )}
 
@@ -410,31 +455,44 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
             </div>
           )}
 
-          {/* Textos posicionados (somente arrasto vertical) */}
+          {/* Textos posicionados livremente (X, Y e rotação) */}
           {overlays.map((overlay) => (
             <div
               key={overlay.id}
-              className="absolute inset-x-0 z-[12] px-4"
+              className="absolute z-[12]"
               style={{
+                left: `${overlay.x ?? 50}%`,
                 top: `${overlay.y}%`,
-                transform: 'translateY(-50%)',
-                cursor: 'ns-resize',
-                textAlign: 'center',
+                transform: `translate(-50%, -50%) rotate(${overlay.rotate || 0}deg)`,
+                cursor: 'move',
+                touchAction: 'none',
               }}
               onMouseDown={(e) => onTextDown(e, overlay.id)}
               onTouchStart={(e) => onTextDown(e, overlay.id)}
             >
               <span style={buildTextStyle(overlay)}>{overlay.content}</span>
 
-              {/* Botão deletar (somente quando ativo) */}
+              {/* Controles (somente quando ativo) */}
               {activeId === overlay.id && (
-                <button
-                  className="absolute -top-3 right-4 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg z-20"
-                  onMouseDown={(e) => { e.stopPropagation(); setOverlays((p) => p.filter((t) => t.id !== overlay.id)); setActiveId(null); }}
-                  onTouchStart={(e) => { e.stopPropagation(); setOverlays((p) => p.filter((t) => t.id !== overlay.id)); setActiveId(null); }}
-                >
-                  ×
-                </button>
+                <>
+                  {/* Deletar */}
+                  <button
+                    className="absolute -top-4 -right-4 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg"
+                    onMouseDown={(e) => { e.stopPropagation(); setOverlays((p) => p.filter((t) => t.id !== overlay.id)); setActiveId(null); }}
+                    onTouchStart={(e) => { e.stopPropagation(); setOverlays((p) => p.filter((t) => t.id !== overlay.id)); setActiveId(null); }}
+                  >
+                    ×
+                  </button>
+                  {/* Girar */}
+                  <button
+                    className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing"
+                    onMouseDown={(e) => onRotateDown(e, overlay.id)}
+                    onTouchStart={(e) => onRotateDown(e, overlay.id)}
+                    title="Girar"
+                  >
+                    <RotateCw size={12} className="text-gray-800" />
+                  </button>
+                </>
               )}
             </div>
           ))}
