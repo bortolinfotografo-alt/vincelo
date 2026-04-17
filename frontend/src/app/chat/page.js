@@ -178,7 +178,9 @@ function ChatContent() {
           setMessages(newMsgs);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (!silent) console.error('[Chat] Erro ao carregar mensagens:', err?.response?.status, err?.response?.data);
+      });
   }
 
   function startPolling() {
