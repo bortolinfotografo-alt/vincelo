@@ -6,6 +6,7 @@
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
 const { createNotification, deleteNotification } = require('./notification.controller');
+const { parsePagination } = require('../utils/helpers');
 
 // Campos padrao para incluir em posts (autor, likes, comentarios, midia do carrossel)
 function postInclude(currentUserId) {
@@ -20,6 +21,11 @@ function postInclude(currentUserId) {
         isVerified: true,
         freelancer: { select: { specialties: true } },
         company: { select: { companyName: true } },
+        _count: {
+          select: {
+            stories: { where: { expiresAt: { gt: new Date() } } },
+          },
+        },
       },
     },
     _count: { select: { likes: true, comments: true } },
@@ -35,8 +41,13 @@ function postInclude(currentUserId) {
 
 // Formata post para resposta padrao
 function formatPost(post, currentUserId) {
+  const { _count: authorCount, ...authorRest } = post.author;
   return {
     ...post,
+    author: {
+      ...authorRest,
+      hasActiveStory: (authorCount?.stories || 0) > 0,
+    },
     likeCount: post._count.likes,
     commentCount: post._count.comments,
     isLiked: currentUserId ? post.likes?.length > 0 : false,
@@ -111,8 +122,7 @@ async function createPost(req, res) {
  * Paginado, mais recentes primeiro
  */
 async function getFeed(req, res) {
-  const { page = 1, limit = 12 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { page, limit, skip } = parsePagination(req.query, 50);
 
   // IDs de quem o usuario segue
   const follows = await prisma.follow.findMany({
@@ -129,7 +139,7 @@ async function getFeed(req, res) {
       where: { authorId: { in: authorIds } },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: Number(limit),
+      take: limit,
       include: postInclude(req.user.id),
     }),
     prisma.post.count({ where: { authorId: { in: authorIds } } }),
@@ -137,8 +147,8 @@ async function getFeed(req, res) {
 
   return res.json({
     posts: posts.map((p) => formatPost(p, req.user.id)),
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    totalPages: Math.ceil(total / limit),
     total,
   });
 }
@@ -148,15 +158,14 @@ async function getFeed(req, res) {
  * Feed publico (explore): todos os posts, mais recentes
  */
 async function getExploreFeed(req, res) {
-  const { page = 1, limit = 12 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { page, limit, skip } = parsePagination(req.query, 50);
   const currentUserId = req.user?.id || null;
 
   const [posts, total] = await Promise.all([
     prisma.post.findMany({
       orderBy: { createdAt: 'desc' },
       skip,
-      take: Number(limit),
+      take: limit,
       include: postInclude(currentUserId),
     }),
     prisma.post.count(),
@@ -164,8 +173,8 @@ async function getExploreFeed(req, res) {
 
   return res.json({
     posts: posts.map((p) => formatPost(p, currentUserId)),
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    totalPages: Math.ceil(total / limit),
     total,
   });
 }
@@ -176,8 +185,7 @@ async function getExploreFeed(req, res) {
  */
 async function getUserPosts(req, res) {
   const { userId } = req.params;
-  const { page = 1, limit = 9 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { page, limit, skip } = parsePagination(req.query, 50);
   const currentUserId = req.user?.id || null;
 
   const [posts, total] = await Promise.all([
@@ -185,7 +193,7 @@ async function getUserPosts(req, res) {
       where: { authorId: userId },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: Number(limit),
+      take: limit,
       include: postInclude(currentUserId),
     }),
     prisma.post.count({ where: { authorId: userId } }),
@@ -193,8 +201,8 @@ async function getUserPosts(req, res) {
 
   return res.json({
     posts: posts.map((p) => formatPost(p, currentUserId)),
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    totalPages: Math.ceil(total / limit),
     total,
   });
 }
@@ -394,15 +402,14 @@ async function toggleSave(req, res) {
  * Posts salvos pelo usuario logado
  */
 async function getSavedPosts(req, res) {
-  const { page = 1, limit = 9 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { page, limit, skip } = parsePagination(req.query, 50);
 
   const [saved, total] = await Promise.all([
     prisma.savedPost.findMany({
       where: { userId: req.user.id },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: Number(limit),
+      take: limit,
       include: {
         post: { include: postInclude(req.user.id) },
       },
@@ -412,8 +419,8 @@ async function getSavedPosts(req, res) {
 
   return res.json({
     posts: saved.map((s) => formatPost(s.post, req.user.id)),
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    totalPages: Math.ceil(total / limit),
     total,
   });
 }

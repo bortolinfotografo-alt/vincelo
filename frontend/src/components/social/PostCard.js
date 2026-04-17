@@ -102,8 +102,8 @@ export default function PostCard({ post, onDelete }) {
       {/* Header: autor */}
       <div className="flex items-center justify-between px-4 py-3">
         <Link href={`/profile/${post.author.id}`} className="flex items-center gap-3 hover:opacity-80">
-          <div className="p-0.5 rounded-full bg-gradient-to-tr from-primary-500 to-orange-400">
-            <div className="bg-white p-0.5 rounded-full dark:bg-gray-900">
+          <div className={`p-0.5 rounded-full ${post.author.hasActiveStory ? 'bg-gradient-to-tr from-primary-500 to-orange-400' : ''}`}>
+            <div className={post.author.hasActiveStory ? 'bg-white p-0.5 rounded-full dark:bg-gray-900' : ''}>
               <UserAvatar user={post.author} size={9} />
             </div>
           </div>

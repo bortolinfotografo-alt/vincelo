@@ -186,68 +186,80 @@ function PostsGrid({ userId, isCurrentUser }) {
         ))}
       </div>
 
-      {/* Modal de post individual — com carrossel e comentários funcionais */}
+      {/* Modal de post individual — estilo Instagram */}
       {selectedPost && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
           onClick={() => setSelectedPost(null)}
         >
+          {/* Botão fechar flutuante */}
+          <button
+            onClick={() => setSelectedPost(null)}
+            className="absolute top-4 right-4 z-10 text-white/70 hover:text-white transition-colors"
+          >
+            <X size={26} />
+          </button>
+
           <div
-            className="bg-white border border-gray-200 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800"
+            className="bg-white dark:bg-gray-900 rounded-xl overflow-hidden w-full mx-4 flex flex-col md:flex-row md:mx-8"
+            style={{ maxWidth: 900, maxHeight: '92vh' }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Fechar */}
-            <div className="flex items-center justify-between px-4 pt-3 pb-1">
-              <p className="text-xs text-gray-400">
-                {new Date(selectedPost.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-              </p>
-              <button onClick={() => setSelectedPost(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <X size={18} />
-              </button>
+            {/* Esquerda: Mídia */}
+            <div className="md:w-[58%] bg-black flex items-center justify-center flex-shrink-0 min-h-0">
+              <MediaCarousel post={selectedPost} />
             </div>
 
-            {/* Mídia (carrossel) */}
-            <MediaCarousel post={selectedPost} />
-
-            {/* Descrição */}
-            {selectedPost.description && (
-              <div className="px-4 pt-3">
-                <p className="text-gray-700 text-sm dark:text-gray-200">{selectedPost.description}</p>
+            {/* Direita: Info + comentários */}
+            <div className="md:w-[42%] flex flex-col min-h-0 border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-800">
+              {/* Data */}
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+                <p className="text-xs text-gray-400">
+                  {new Date(selectedPost.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </p>
               </div>
-            )}
 
-            {/* Ações interativas: curtir + comentários */}
-            <div className="px-4 py-3 space-y-2">
-              <div className="flex items-center gap-4">
-                <LikeButton
-                  postId={selectedPost.id}
-                  initialLiked={selectedPost.isLiked}
-                  initialCount={selectedPost.likeCount}
-                />
+              {/* Conteúdo rolável — sem scrollbar visível */}
+              <div
+                className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {selectedPost.description && (
+                  <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">{selectedPost.description}</p>
+                )}
                 <CommentSection
                   postId={selectedPost.id}
                   initialCount={selectedPost.commentCount}
                 />
               </div>
-            </div>
 
-            {/* Ações de dono */}
-            {isCurrentUser && (
-              <div className="flex gap-2 px-4 pb-4">
-                <button
-                  onClick={() => openEdit(selectedPost)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <Pencil size={13} /> Editar
-                </button>
-                <button
-                  onClick={() => handleDelete(selectedPost.id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 transition-colors"
-                >
-                  <Trash2 size={13} /> Excluir
-                </button>
+              {/* Ações fixas no rodapé */}
+              <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 flex-shrink-0 space-y-2">
+                <div className="flex items-center gap-4">
+                  <LikeButton
+                    postId={selectedPost.id}
+                    initialLiked={selectedPost.isLiked}
+                    initialCount={selectedPost.likeCount}
+                  />
+                </div>
+                {isCurrentUser && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openEdit(selectedPost)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <Pencil size={13} /> Editar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(selectedPost.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 transition-colors"
+                    >
+                      <Trash2 size={13} /> Excluir
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
