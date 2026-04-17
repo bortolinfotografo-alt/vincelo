@@ -109,6 +109,15 @@ export function AuthProvider({ children }) {
     return () => api.interceptors.response.eject(interceptor);
   }, []);
 
+  // Heartbeat — atualiza lastSeenAt a cada 60s enquanto logado
+  useEffect(() => {
+    if (!user) return;
+    const ping = () => api.put('/users/heartbeat').catch(() => {});
+    ping(); // imediato ao logar
+    const interval = setInterval(ping, 60000);
+    return () => clearInterval(interval);
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const login = async (data) => {
     const res = await api.post('/auth/login', data);
     const { token, refreshToken, user: userData } = res.data;

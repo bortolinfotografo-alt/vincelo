@@ -17,6 +17,7 @@ router.get('/companies', userController.listCompanies);
 router.get('/:id', userController.getUserById);
 
 // Rotas protegidas
+router.put('/heartbeat', ensureAuthenticated, userController.heartbeat);
 router.put('/profile', ensureAuthenticated, upload.single('avatar'), validateMagicBytes, createUploadMiddleware('avatars'), userController.updateProfile);
 
 module.exports = router;

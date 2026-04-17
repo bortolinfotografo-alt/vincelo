@@ -66,7 +66,7 @@ async function getConversation(req, res) {
   // Verifica se o usuario existe
   const otherUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, avatar: true },
+    select: { id: true, name: true, avatar: true, lastSeenAt: true },
   });
 
   if (!otherUser) {
@@ -134,8 +134,8 @@ async function listConversations(req, res) {
     orderBy: { createdAt: 'desc' },
     take: CONVERSATIONS_LIMIT,
     include: {
-      sender: { select: { id: true, name: true, avatar: true } },
-      receiver: { select: { id: true, name: true, avatar: true } },
+      sender: { select: { id: true, name: true, avatar: true, lastSeenAt: true } },
+      receiver: { select: { id: true, name: true, avatar: true, lastSeenAt: true } },
     },
   });
 

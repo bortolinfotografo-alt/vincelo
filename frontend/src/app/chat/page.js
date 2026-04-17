@@ -14,6 +14,26 @@ import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText, ChevronLe
 import EmojiButton from '@/components/ui/EmojiButton';
 
 const POLLING_INTERVAL = 5000;
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutos
+
+function isOnline(lastSeenAt) {
+  if (!lastSeenAt) return false;
+  return Date.now() - new Date(lastSeenAt).getTime() < ONLINE_THRESHOLD_MS;
+}
+
+function OnlineBadge({ lastSeenAt, showLabel = true }) {
+  const online = isOnline(lastSeenAt);
+  return (
+    <span className="flex items-center gap-1">
+      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${online ? 'bg-green-400' : 'bg-gray-400'}`} />
+      {showLabel && (
+        <span className={`text-xs ${online ? 'text-green-400' : 'text-gray-400'}`}>
+          {online ? 'Online' : 'Offline'}
+        </span>
+      )}
+    </span>
+  );
+}
 
 // ── Miniatura do story respondido ────────────────────────────
 function StoryReplyThumb({ previewUrl }) {
@@ -323,10 +343,13 @@ function ChatContent() {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center font-semibold text-primary-600 dark:text-primary-400 flex-shrink-0 overflow-hidden">
-                          {conv.user.avatar
-                            ? <img src={conv.user.avatar} alt="" className="w-full h-full object-cover" />
-                            : name.charAt(0).toUpperCase() || '?'}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center font-semibold text-primary-600 dark:text-primary-400 overflow-hidden">
+                            {conv.user.avatar
+                              ? <img src={conv.user.avatar} alt="" className="w-full h-full object-cover" />
+                              : name.charAt(0).toUpperCase() || '?'}
+                          </div>
+                          <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-900 ${isOnline(conv.user.lastSeenAt) ? 'bg-green-400' : 'bg-gray-400'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm truncate ${
@@ -368,13 +391,18 @@ function ChatContent() {
                   >
                     <ChevronLeft size={22} />
                   </button>
-                  <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center font-semibold text-primary-600 dark:text-primary-400 overflow-hidden flex-shrink-0">
-                    {selectedUser.avatar
-                      ? <img src={selectedUser.avatar} alt="" className="w-full h-full object-cover" />
-                      : selectedName.charAt(0).toUpperCase()}
+                  <div className="relative w-10 h-10 flex-shrink-0">
+                    <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center font-semibold text-primary-600 dark:text-primary-400 overflow-hidden">
+                      {selectedUser.avatar
+                        ? <img src={selectedUser.avatar} alt="" className="w-full h-full object-cover" />
+                        : selectedName.charAt(0).toUpperCase()}
+                    </div>
+                    {/* Bolinha de status no avatar */}
+                    <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900 ${isOnline(selectedUser.lastSeenAt) ? 'bg-green-400' : 'bg-gray-400'}`} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">{selectedName}</h3>
+                    <OnlineBadge lastSeenAt={selectedUser.lastSeenAt} />
                   </div>
                 </div>
 

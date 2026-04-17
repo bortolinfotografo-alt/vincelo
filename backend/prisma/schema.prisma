@@ -23,6 +23,7 @@ model User {
   isVerified       Boolean             @default(false)
   resetToken       String?
   resetExpires     DateTime?
+  lastSeenAt       DateTime?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   receivedMessages ChatMessage[]       @relation("ReceiverMessages")

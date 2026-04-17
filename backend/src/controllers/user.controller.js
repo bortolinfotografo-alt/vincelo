@@ -4,7 +4,7 @@
 // ============================================================
 
 const { prisma } = require('../services/db');
-const { calculateAvgRating } = require('../utils/helpers');
+const { calculateAvgRating, parsePagination } = require('../utils/helpers');
 
 /**
  * GET /api/users/freelancers
@@ -91,8 +91,7 @@ async function listFreelancers(req, res) {
   }
 
   // ── Paginação ─────────────────────────────────────────────────
-  const { page = 1, limit = 20 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { page, limit, skip } = parsePagination(req.query);
 
   const [freelancers, total] = await prisma.$transaction([
     prisma.user.findMany({
@@ -108,7 +107,7 @@ async function listFreelancers(req, res) {
         _count: { select: { followers: true } },
       },
       orderBy: [{ createdAt: 'desc' }],
-      take: Number(limit),
+      take: limit,
       skip,
     }),
     prisma.user.count({ where }),
@@ -174,9 +173,9 @@ async function listFreelancers(req, res) {
   return res.json({
     freelancers: result,
     total,
-    page: Number(page),
-    limit: Number(limit),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
   });
 }
 
@@ -302,8 +301,7 @@ async function updateProfile(req, res) {
  * GET /api/users/companies
  */
 async function listCompanies(req, res) {
-  const { page = 1, limit = 20 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { page, limit, skip } = parsePagination(req.query);
 
   const [companies, total] = await prisma.$transaction([
     prisma.user.findMany({
@@ -316,7 +314,7 @@ async function listCompanies(req, res) {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: Number(limit),
+      take: limit,
       skip,
     }),
     prisma.user.count({ where: { role: 'COMPANY', isActive: true, company: { isNot: null } } }),
@@ -333,7 +331,19 @@ async function listCompanies(req, res) {
     recentJobs: c.company?.postedJobs,
   }));
 
-  return res.json({ companies: result, total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) });
+  return res.json({ companies: result, total, page, limit, totalPages: Math.ceil(total / limit) });
 }
 
-module.exports = { listFreelancers, getUserById, updateProfile, listCompanies };
+/**
+ * PUT /api/users/heartbeat
+ * Atualiza lastSeenAt do usuário autenticado (chamado a cada ~60s pelo frontend)
+ */
+async function heartbeat(req, res) {
+  await prisma.user.update({
+    where: { id: req.user.id },
+    data: { lastSeenAt: new Date() },
+  });
+  return res.json({ ok: true });
+}
+
+module.exports = { listFreelancers, getUserById, updateProfile, listCompanies, heartbeat };
