@@ -312,6 +312,15 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
   const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
 
+  const handleFollowChange = (data) => {
+    setFollowStats((prev) => ({
+      ...prev,
+      followersCount: data.followersCount,
+      followingCount: data.followingCount,
+      isFollowing: data.following,
+    }));
+  };
+
   useEffect(() => {
     api.get(`/stories/user/${profile.id}`)
       .then((res) => setStories(res.data.stories || []))
@@ -635,6 +644,15 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
   const [followingList, setFollowingList] = useState([]);
   const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
+
+  const handleFollowChange = (data) => {
+    setFollowStats((prev) => ({
+      ...prev,
+      followersCount: data.followersCount,
+      followingCount: data.followingCount,
+      isFollowing: data.following,
+    }));
+  };
 
   useEffect(() => {
     api.get(`/stories/user/${profile.id}`)

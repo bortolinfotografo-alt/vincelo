@@ -119,9 +119,7 @@ export default function CreatePost({ onPostCreated }) {
     data.append('aspectRatio', aspectRatio);
 
     try {
-      const res = await api.post('/posts', data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.post('/posts', data);
       toast.success('Post publicado!');
       setText('');
       clearAll();

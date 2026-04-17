@@ -133,7 +133,7 @@ export default function JobsPage() {
 
     setSubmitting(true);
     try {
-      await api.post('/jobs', formData);
+      await api.post('/jobs', { ...formData, budget: Number(formData.budget) });
       toast.success('Vaga criada com sucesso!');
       setShowCreateForm(false);
       setFormData(INITIAL_FORM);
