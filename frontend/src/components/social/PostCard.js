@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, Bookmark, BookmarkCheck, BadgeCheck, Trash2, ExternalLink, Share2, Zap } from 'lucide-react';
+import { MoreHorizontal, Bookmark, BookmarkCheck, BadgeCheck, Trash2, ExternalLink, Share2, Zap, Pencil } from 'lucide-react';
 import LikeButton from './LikeButton';
 import CommentSection from './CommentSection';
 import ShareModal from './ShareModal';
 import MediaCarousel from './MediaCarousel';
+import EditPostModal from './EditPostModal';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
 import { Avatar } from '@/components/ui/Avatar';
@@ -57,6 +58,8 @@ export default function PostCard({ post, onDelete }) {
   const [saved, setSaved] = useState(post.isSaved || false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [currentPost, setCurrentPost] = useState(post);
 
   const displayName = post.author?.company?.companyName || post.author?.name || 'Usuario';
   const subtitle =
@@ -135,12 +138,20 @@ export default function PostCard({ post, onDelete }) {
           {menuOpen && (
             <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-32 overflow-hidden dark:bg-gray-800 dark:border-gray-700">
               {currentUser && currentUser.id === post.author.id && (
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
-                >
-                  <Trash2 size={14} /> Excluir
-                </button>
+                <>
+                  <button
+                    onClick={() => { setEditOpen(true); setMenuOpen(false); }}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                  >
+                    <Pencil size={14} /> Editar
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
+                  >
+                    <Trash2 size={14} /> Excluir
+                  </button>
+                </>
               )}
               <button
                 onClick={() => { router.push(`/profile/${post.author.id}`); setMenuOpen(false); }}
@@ -179,7 +190,7 @@ export default function PostCard({ post, onDelete }) {
         </div>
 
         <PostDescription
-          text={post.description}
+          text={currentPost.description}
           authorId={post.author.id}
           authorName={displayName}
         />
@@ -190,6 +201,14 @@ export default function PostCard({ post, onDelete }) {
           post={post}
           authorName={displayName}
           onClose={() => setShareOpen(false)}
+        />
+      )}
+
+      {editOpen && (
+        <EditPostModal
+          post={currentPost}
+          onClose={() => setEditOpen(false)}
+          onSave={(updated) => setCurrentPost((prev) => ({ ...prev, description: updated.description }))}
         />
       )}
     </article>
