@@ -46,6 +46,7 @@ model User {
   subscription     StripeSubscription?
   adminRole        AdminRole           @default(USER)
   auditLogs        AuditLog[]          @relation("AdminLogs")
+  boosts           Boost[]             @relation("BoostsByUser")
 
   @@index([role, isActive])
   @@index([adminRole])
@@ -231,6 +232,8 @@ model Post {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   thumbnailUrl  String?
+  isSponsored   Boolean        @default(false)
+  sponsoredCity String?
   notifications Notification[]
   comments      PostComment[]
   likes         PostLike[]
@@ -241,6 +244,7 @@ model Post {
   @@index([authorId])
   @@index([createdAt])
   @@index([authorId, createdAt])
+  @@index([isSponsored])
   @@map("posts")
 }
 
@@ -423,6 +427,34 @@ enum NotificationType {
   PROPOSAL_ACCEPTED
   PROPOSAL_REJECTED
   NEW_PROPOSAL
+}
+
+model Boost {
+  id        String      @id @default(uuid())
+  userId    String
+  targetId  String
+  type      BoostType
+  startDate DateTime    @default(now())
+  endDate   DateTime
+  status    BoostStatus @default(ACTIVE)
+  createdAt DateTime    @default(now())
+  user      User        @relation("BoostsByUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([type, status, endDate])
+  @@index([targetId, type, status])
+  @@index([userId])
+  @@map("boosts")
+}
+
+enum BoostType {
+  PROFILE
+  JOB
+}
+
+enum BoostStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
 }
 
 enum RateType {

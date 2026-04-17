@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
-import { Search, MapPin, Calendar, DollarSign, Plus, Briefcase, AlertCircle, X, FileText } from 'lucide-react';
+import { Search, MapPin, Calendar, DollarSign, Plus, Briefcase, AlertCircle, X, FileText, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import CityAutocomplete from '@/components/ui/CityAutocomplete';
@@ -372,8 +372,13 @@ export default function JobsPage() {
             {jobs.map((job) => (
               <div
                 key={job.id}
-                className="bg-white rounded-xl shadow-sm border border-surface-200 p-5 hover:shadow-md transition-shadow dark:bg-gray-900 dark:border-gray-800"
+                className={`bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow dark:bg-gray-900 ${job.isBoosted ? 'border-2 border-amber-300 dark:border-amber-700' : 'border border-surface-200 dark:border-gray-800'}`}
               >
+                {job.isBoosted && (
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-2">
+                    <Zap size={10} fill="currentColor" /> DESTAQUE
+                  </div>
+                )}
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">

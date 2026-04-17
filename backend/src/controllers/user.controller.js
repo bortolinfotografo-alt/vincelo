@@ -5,6 +5,7 @@
 
 const { prisma } = require('../services/db');
 const { calculateAvgRating, parsePagination } = require('../utils/helpers');
+const { getActiveBoostedIds } = require('./boost.controller');
 
 /**
  * GET /api/users/freelancers
@@ -93,24 +94,27 @@ async function listFreelancers(req, res) {
   // ── Paginação ─────────────────────────────────────────────────
   const { page, limit, skip } = parsePagination(req.query);
 
-  const [freelancers, total] = await prisma.$transaction([
-    prisma.user.findMany({
-      where,
-      include: {
-        freelancer: {
-          include: {
-            portfolio: { orderBy: { order: 'asc' }, take: 6 },
-            unavailability: true,
+  const [[freelancers, total], boostedIds] = await Promise.all([
+    prisma.$transaction([
+      prisma.user.findMany({
+        where,
+        include: {
+          freelancer: {
+            include: {
+              portfolio: { orderBy: { order: 'asc' }, take: 6 },
+              unavailability: true,
+            },
           },
+          reviewsReceived: { select: { rating: true } },
+          _count: { select: { followers: true } },
         },
-        reviewsReceived: { select: { rating: true } },
-        _count: { select: { followers: true } },
-      },
-      orderBy: [{ createdAt: 'desc' }],
-      take: limit,
-      skip,
-    }),
-    prisma.user.count({ where }),
+        orderBy: [{ createdAt: 'desc' }],
+        take: limit,
+        skip,
+      }),
+      prisma.user.count({ where }),
+    ]),
+    getActiveBoostedIds('PROFILE'),
   ]);
 
   // ── Formata resposta ──────────────────────────────────────────
@@ -152,19 +156,22 @@ async function listFreelancers(req, res) {
         reviewCount: f.reviewsReceived?.length || 0,
         followerCount,
         popularityScore,
+        isBoosted: boostedIds.has(f.id),
       };
     })
     .sort((a, b) => {
+      // Impulsionados sempre primeiro
+      if (a.isBoosted && !b.isBoosted) return -1;
+      if (!a.isBoosted && b.isBoosted) return 1;
+
       const hasFilters = !!(search || location || specialty || (available !== undefined && available !== '') || availableOn);
 
       if (hasFilters) {
-        // Com filtro ativo: disponíveis primeiro, depois por popularidade
         if (a.available && !b.available) return -1;
         if (!a.available && b.available) return 1;
         return b.popularityScore - a.popularityScore;
       }
 
-      // Sem filtros: mais populares em destaque (disponíveis ganham bônus leve)
       const aScore = a.popularityScore + (a.available ? 10 : 0);
       const bScore = b.popularityScore + (b.available ? 10 : 0);
       return bScore - aScore;

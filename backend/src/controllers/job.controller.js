@@ -5,6 +5,8 @@
 
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
+const { parsePagination } = require('../utils/helpers');
+const { getActiveBoostedIds } = require('./boost.controller');
 
 const TIME_REGEX = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 
@@ -82,8 +84,8 @@ async function createJob(req, res) {
  * Lista vagas abertas com filtros e paginacao
  */
 async function listJobs(req, res) {
-  const { serviceType, location, search, status, companyId, page = 1, limit = 20 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { serviceType, location, search, status, companyId } = req.query;
+  const { page, limit, skip } = parsePagination(req.query);
 
   const where = {};
 
@@ -107,35 +109,47 @@ async function listJobs(req, res) {
     ];
   }
 
-  const [jobs, total] = await prisma.$transaction([
-    prisma.job.findMany({
-      where,
-      include: {
-        company: {
-          include: {
-            user: { select: { id: true, name: true, avatar: true } },
+  const [[jobs, total], boostedIds] = await Promise.all([
+    prisma.$transaction([
+      prisma.job.findMany({
+        where,
+        include: {
+          company: {
+            include: {
+              user: { select: { id: true, name: true, avatar: true } },
+            },
           },
-        },
-        assignedFreelancer: {
-          include: {
-            user: { select: { id: true, name: true, avatar: true } },
+          assignedFreelancer: {
+            include: {
+              user: { select: { id: true, name: true, avatar: true } },
+            },
           },
+          _count: { select: { proposals: true } },
         },
-        _count: { select: { proposals: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: Number(limit),
-      skip,
-    }),
-    prisma.job.count({ where }),
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+      prisma.job.count({ where }),
+    ]),
+    getActiveBoostedIds('JOB'),
   ]);
 
+  // Impulsionadas primeiro, depois mais recentes
+  const sorted = [...jobs].sort((a, b) => {
+    const aB = boostedIds.has(a.id);
+    const bB = boostedIds.has(b.id);
+    if (aB && !bB) return -1;
+    if (!aB && bB) return 1;
+    return 0;
+  });
+
   return res.json({
-    jobs,
+    jobs: sorted.map((j) => ({ ...j, isBoosted: boostedIds.has(j.id) })),
     total,
-    page: Number(page),
-    limit: Number(limit),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
   });
 }
 

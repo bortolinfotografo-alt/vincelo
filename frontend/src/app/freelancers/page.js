@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import {
   Search, MapPin, Star, CalendarCheck, X, SlidersHorizontal,
-  CheckCircle2, Clock, Loader2,
+  CheckCircle2, Clock, Loader2, Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -37,7 +37,12 @@ function FreelancerCard({ f }) {
 
   return (
     <Link href={`/profile/${f.id}`} className="block group">
-      <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-lg hover:border-primary-200 dark:bg-gray-900 dark:border-gray-800 dark:hover:border-primary-700 transition-all duration-200">
+      <div className={`bg-white border rounded-2xl p-5 hover:shadow-lg transition-all duration-200 dark:bg-gray-900 ${f.isBoosted ? 'border-amber-300 dark:border-amber-700 shadow-amber-100 dark:shadow-amber-900/20 shadow-md' : 'border-gray-200 hover:border-primary-200 dark:border-gray-800 dark:hover:border-primary-700'}`}>
+        {f.isBoosted && (
+          <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-2">
+            <Zap size={10} fill="currentColor" /> DESTAQUE
+          </div>
+        )}
         <div className="flex items-start gap-3 mb-3">
           {/* Avatar */}
           <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-500/20 flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-primary-600 dark:text-primary-400 text-lg">

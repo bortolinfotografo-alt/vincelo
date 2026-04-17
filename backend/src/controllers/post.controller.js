@@ -116,6 +116,36 @@ async function createPost(req, res) {
   return res.status(201).json(formatPost(post, req.user.id));
 }
 
+// Injeta posts patrocinados no feed a cada SPONSORED_INTERVAL posts orgânicos
+const SPONSORED_INTERVAL = 5;
+
+async function getSponsoredPosts(currentUserId, userCity) {
+  const where = { isSponsored: true };
+  // Fase 3: filtrar por cidade se disponível
+  if (userCity) {
+    where.OR = [{ sponsoredCity: null }, { sponsoredCity: { contains: userCity, mode: 'insensitive' } }];
+  }
+  return prisma.post.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    include: postInclude(currentUserId),
+  });
+}
+
+function injectSponsored(organic, sponsored) {
+  if (!sponsored.length) return organic;
+  const result = [];
+  let sIdx = 0;
+  organic.forEach((post, i) => {
+    result.push(post);
+    if ((i + 1) % SPONSORED_INTERVAL === 0 && sIdx < sponsored.length) {
+      result.push(sponsored[sIdx++]);
+    }
+  });
+  return result;
+}
+
 /**
  * GET /api/posts/feed
  * Feed do usuario: posts de quem ele segue + os proprios
@@ -124,29 +154,38 @@ async function createPost(req, res) {
 async function getFeed(req, res) {
   const { page, limit, skip } = parsePagination(req.query, 50);
 
-  // IDs de quem o usuario segue
   const follows = await prisma.follow.findMany({
     where: { followerId: req.user.id },
     select: { followingId: true },
   });
 
   const followingIds = follows.map((f) => f.followingId);
-  // Inclui os proprios posts no feed
   const authorIds = [...followingIds, req.user.id];
 
-  const [posts, total] = await Promise.all([
+  // Busca cidade do usuário para filtro de anúncios (fase 3)
+  const userProfile = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { freelancer: { select: { location: true } }, company: { select: { userId: true } } },
+  });
+  const userCity = userProfile?.freelancer?.location || null;
+
+  const [posts, total, sponsored] = await Promise.all([
     prisma.post.findMany({
-      where: { authorId: { in: authorIds } },
+      where: { authorId: { in: authorIds }, isSponsored: false },
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
       include: postInclude(req.user.id),
     }),
-    prisma.post.count({ where: { authorId: { in: authorIds } } }),
+    prisma.post.count({ where: { authorId: { in: authorIds }, isSponsored: false } }),
+    getSponsoredPosts(req.user.id, userCity),
   ]);
 
+  const formatted = posts.map((p) => formatPost(p, req.user.id));
+  const formattedSponsored = sponsored.map((p) => ({ ...formatPost(p, req.user.id), isSponsored: true }));
+
   return res.json({
-    posts: posts.map((p) => formatPost(p, req.user.id)),
+    posts: injectSponsored(formatted, formattedSponsored),
     page,
     totalPages: Math.ceil(total / limit),
     total,
@@ -161,18 +200,23 @@ async function getExploreFeed(req, res) {
   const { page, limit, skip } = parsePagination(req.query, 50);
   const currentUserId = req.user?.id || null;
 
-  const [posts, total] = await Promise.all([
+  const [posts, total, sponsored] = await Promise.all([
     prisma.post.findMany({
+      where: { isSponsored: false },
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
       include: postInclude(currentUserId),
     }),
-    prisma.post.count(),
+    prisma.post.count({ where: { isSponsored: false } }),
+    getSponsoredPosts(currentUserId, null),
   ]);
 
+  const formatted = posts.map((p) => formatPost(p, currentUserId));
+  const formattedSponsored = sponsored.map((p) => ({ ...formatPost(p, currentUserId), isSponsored: true }));
+
   return res.json({
-    posts: posts.map((p) => formatPost(p, currentUserId)),
+    posts: injectSponsored(formatted, formattedSponsored),
     page,
     totalPages: Math.ceil(total / limit),
     total,

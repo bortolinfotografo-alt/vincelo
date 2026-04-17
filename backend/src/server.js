@@ -74,6 +74,7 @@ const followRoutes = require('./routes/follow.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const googleAuthRoutes = require('./routes/google-auth.routes');
 const adminRoutes = require('./routes/admin.routes');
+const boostRoutes = require('./routes/boost.routes');
 const { cleanExpiredStories } = require('./controllers/story.controller');
 
 const app = express();
@@ -168,6 +169,7 @@ app.use('/api/follow', followRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/google-auth', googleAuthRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/boosts', boostRoutes);
 
 // Health check
 app.get('/health', async (req, res) => {

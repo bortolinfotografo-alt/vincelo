@@ -8,8 +8,9 @@ import { useAuth } from '@/app/auth-context';
 import toast from 'react-hot-toast';
 import {
   Briefcase, MapPin, Calendar, DollarSign, Clock,
-  ArrowLeft, Send, User, BadgeCheck, MessageCircle, CheckCircle, XCircle,
+  ArrowLeft, Send, User, BadgeCheck, MessageCircle, CheckCircle, XCircle, Zap,
 } from 'lucide-react';
+import BoostModal from '@/components/ui/BoostModal';
 
 const SERVICE_TYPE_LABELS = {
   fotografia: 'Fotografia',
@@ -38,6 +39,7 @@ export default function JobDetailPage() {
   const [applying, setApplying] = useState(false);
   const [showApply, setShowApply] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
+  const [boostOpen, setBoostOpen] = useState(false);
   const [proposedBudget, setProposedBudget] = useState('');
   const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [updatingProposal, setUpdatingProposal] = useState(null);
@@ -237,6 +239,23 @@ export default function JobDetailPage() {
                 <User size={15} /> Entrar para candidatar
               </button>
             </Link>
+          )}
+          {isCompanyOwner && job.status === 'OPEN' && (
+            <>
+              <button
+                onClick={() => setBoostOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 rounded-xl text-sm font-semibold transition-colors">
+                <Zap size={15} fill="currentColor" /> Impulsionar vaga
+              </button>
+              <BoostModal
+                open={boostOpen}
+                onClose={() => setBoostOpen(false)}
+                targetId={job.id}
+                type="JOB"
+                label="esta vaga"
+                onSuccess={() => setBoostOpen(false)}
+              />
+            </>
           )}
         </div>
 

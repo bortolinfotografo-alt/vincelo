@@ -14,8 +14,9 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
   MapPin, Heart, MessageCircle, BadgeCheck, Grid3x3,
-  Briefcase, ChevronRight, Play, MoreHorizontal, Trash2, Pencil, X,
+  Briefcase, ChevronRight, Play, MoreHorizontal, Trash2, Pencil, X, Zap,
 } from 'lucide-react';
+import BoostModal from '@/components/ui/BoostModal';
 import FollowButton from '@/components/social/FollowButton';
 import StoryViewer from '@/components/social/StoryViewer';
 import MediaCarousel from '@/components/social/MediaCarousel';
@@ -317,6 +318,7 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
   const [stories, setStories] = useState([]);
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [followStats, setFollowStats] = useState(initialFollowStats);
+  const [boostOpen, setBoostOpen] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [followersList, setFollowersList] = useState([]);
@@ -427,11 +429,26 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
                 </Link>
               )}
               {isCurrentUser && (
-                <Link href="/profile">
-                  <button className="px-4 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                    Editar perfil
+                <>
+                  <Link href="/profile">
+                    <button className="px-4 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                      Editar perfil
+                    </button>
+                  </Link>
+                  <button
+                    onClick={() => setBoostOpen(true)}
+                    className="px-3 py-1.5 text-sm rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 flex items-center gap-1.5 font-medium transition-colors">
+                    <Zap size={14} fill="currentColor" /> Impulsionar
                   </button>
-                </Link>
+                  <BoostModal
+                    open={boostOpen}
+                    onClose={() => setBoostOpen(false)}
+                    targetId={profile.id}
+                    type="PROFILE"
+                    label="seu perfil"
+                    onSuccess={() => setBoostOpen(false)}
+                  />
+                </>
               )}
             </div>
 
@@ -652,6 +669,7 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
   const [openJobs, setOpenJobs] = useState([]);
   const [stories, setStories] = useState([]);
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
+  const [boostOpen, setBoostOpen] = useState(false);
   const [followStats, setFollowStats] = useState(initialFollowStats);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
@@ -757,11 +775,26 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
                 </Link>
               )}
               {isCurrentUser && (
-                <Link href="/profile">
-                  <button className="px-4 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                    Editar perfil
+                <>
+                  <Link href="/profile">
+                    <button className="px-4 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                      Editar perfil
+                    </button>
+                  </Link>
+                  <button
+                    onClick={() => setBoostOpen(true)}
+                    className="px-3 py-1.5 text-sm rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 flex items-center gap-1.5 font-medium transition-colors">
+                    <Zap size={14} fill="currentColor" /> Impulsionar
                   </button>
-                </Link>
+                  <BoostModal
+                    open={boostOpen}
+                    onClose={() => setBoostOpen(false)}
+                    targetId={profile.id}
+                    type="PROFILE"
+                    label="seu perfil"
+                    onSuccess={() => setBoostOpen(false)}
+                  />
+                </>
               )}
             </div>
 

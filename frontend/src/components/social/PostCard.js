@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, Bookmark, BookmarkCheck, BadgeCheck, Trash2, ExternalLink, Share2 } from 'lucide-react';
+import { MoreHorizontal, Bookmark, BookmarkCheck, BadgeCheck, Trash2, ExternalLink, Share2, Zap } from 'lucide-react';
 import LikeButton from './LikeButton';
 import CommentSection from './CommentSection';
 import ShareModal from './ShareModal';
@@ -114,7 +114,14 @@ export default function PostCard({ post, onDelete }) {
                 <BadgeCheck size={14} className="text-primary-400 fill-primary-400/20" />
               )}
             </div>
-            <p className="text-xs text-gray-500">{subtitle} · {timeAgo(post.createdAt)}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-gray-500">{subtitle} · {timeAgo(post.createdAt)}</p>
+              {post.isSponsored && (
+                <span className="flex items-center gap-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                  <Zap size={8} fill="currentColor" /> Patrocinado
+                </span>
+              )}
+            </div>
           </div>
         </Link>
 
