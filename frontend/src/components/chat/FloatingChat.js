@@ -379,7 +379,10 @@ export default function FloatingChat() {
               )}
             </h3>
             <div className="flex items-center gap-1">
-              <Link href="/chat" onClick={() => setOpen(false)}>
+              <Link
+                href={screen === 'thread' && selectedConv ? `/chat?userId=${selectedConv.user.id}` : '/chat'}
+                onClick={() => setOpen(false)}
+              >
                 <button className="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Abrir em tela cheia">
                   <Maximize2 size={14} />
                 </button>

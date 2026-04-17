@@ -10,7 +10,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/auth-context';
 import api from '@/lib/api';
-import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText } from 'lucide-react';
+import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText, ChevronLeft } from 'lucide-react';
 import EmojiButton from '@/components/ui/EmojiButton';
 
 const POLLING_INTERVAL = 5000;
@@ -271,7 +271,7 @@ function ChatContent() {
         <div className="grid grid-cols-1 md:grid-cols-3 h-[600px]">
 
           {/* ── Lista de conversas ─────────────────────────────────── */}
-          <div className="border-r border-gray-200 dark:border-gray-800 flex flex-col">
+          <div className={`border-r border-gray-200 dark:border-gray-800 flex-col ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
             <div className="p-3 border-b border-gray-100 dark:border-gray-800">
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -352,7 +352,7 @@ function ChatContent() {
           </div>
 
           {/* ── Área de chat ───────────────────────────────────────── */}
-          <div className="md:col-span-2 flex flex-col">
+          <div className={`md:col-span-2 flex-col ${selectedUser || loadingThread ? 'flex' : 'hidden md:flex'}`}>
             {loadingThread ? (
               <div className="flex-1 flex items-center justify-center">
                 <Loader2 size={28} className="animate-spin text-primary-500" />
@@ -362,6 +362,12 @@ function ChatContent() {
               <>
                 {/* Header */}
                 <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedUser(null)}
+                    className="md:hidden text-gray-400 hover:text-gray-700 dark:hover:text-white p-1 -ml-1 rounded-lg transition-colors"
+                  >
+                    <ChevronLeft size={22} />
+                  </button>
                   <div className="w-10 h-10 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center font-semibold text-primary-600 dark:text-primary-400 overflow-hidden flex-shrink-0">
                     {selectedUser.avatar
                       ? <img src={selectedUser.avatar} alt="" className="w-full h-full object-cover" />
