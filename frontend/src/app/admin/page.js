@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import {
   Shield, Users, FileText, Activity, Search, Ban, CheckCircle,
-  ChevronLeft, ChevronRight, RefreshCw, Trash2, Image, BookOpen, Briefcase,
+  ChevronLeft, ChevronRight, RefreshCw, Trash2, Image, BookOpen, Briefcase, ExternalLink,
 } from 'lucide-react';
 
 const ROLE_LEVELS = { USER: 0, MODERATOR: 1, ADMIN: 2, OWNER: 3 };
@@ -360,6 +360,12 @@ function ModerationTab() {
     return item.author;
   };
 
+  const getViewUrl = (item) => {
+    if (kind === 'jobs') return `/jobs/${item.id}`;
+    if (kind === 'stories') return `/profile/${item.author.id}`;
+    return `/profile/${item.author.id}`;
+  };
+
   const getTitle = (item) => {
     if (kind === 'jobs') return item.title;
     return item.description || item.caption;
@@ -439,8 +445,12 @@ function ModerationTab() {
                   </div>
                 </div>
 
-                {/* Delete */}
+                {/* Actions */}
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <a href={getViewUrl(item)} target="_blank" rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Ver original">
+                    <ExternalLink size={15} className="text-gray-400" />
+                  </a>
                   {isConfirming ? (
                     <>
                       <button onClick={() => handleDelete(item.id)}
