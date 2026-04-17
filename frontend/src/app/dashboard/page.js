@@ -182,7 +182,7 @@ function CompanyDashboard({ dashboard }) {
         ) : (
           <div className="space-y-4">
             {dashboard.recentJobs.map((job) => (
-              <div key={job.id} className="flex items-center justify-between p-4 bg-surface-50 rounded-lg dark:bg-gray-800">
+              <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between p-4 bg-surface-50 rounded-lg dark:bg-gray-800 hover:bg-surface-100 dark:hover:bg-gray-700 transition-colors">
                 <div>
                   <h3 className="font-medium">{job.title}</h3>
                   <p className="text-sm text-surface-500">{job.serviceType} - {job.location}</p>
@@ -202,7 +202,7 @@ function CompanyDashboard({ dashboard }) {
                     {job._count?.proposals || 0} candidato(s)
                   </p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

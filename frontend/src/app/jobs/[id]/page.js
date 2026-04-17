@@ -8,7 +8,7 @@ import { useAuth } from '@/app/auth-context';
 import toast from 'react-hot-toast';
 import {
   Briefcase, MapPin, Calendar, DollarSign, Clock,
-  ArrowLeft, Send, User, BadgeCheck, MessageCircle,
+  ArrowLeft, Send, User, BadgeCheck, MessageCircle, CheckCircle, XCircle,
 } from 'lucide-react';
 
 const SERVICE_TYPE_LABELS = {
@@ -40,6 +40,7 @@ export default function JobDetailPage() {
   const [coverLetter, setCoverLetter] = useState('');
   const [proposedBudget, setProposedBudget] = useState('');
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [updatingProposal, setUpdatingProposal] = useState(null);
 
   useEffect(() => {
     api.get(`/jobs/${id}`)
@@ -57,6 +58,20 @@ export default function JobDetailPage() {
       .catch(() => toast.error('Vaga não encontrada'))
       .finally(() => setLoading(false));
   }, [id, user]);
+
+  const handleProposalStatus = async (proposalId, status) => {
+    setUpdatingProposal(proposalId);
+    try {
+      await api.put(`/proposals/${proposalId}/status`, { status });
+      toast.success(status === 'ACCEPTED' ? 'Candidatura aceita!' : 'Candidatura recusada');
+      const res = await api.get(`/jobs/${id}`);
+      setJob(res.data.job);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erro ao atualizar candidatura');
+    } finally {
+      setUpdatingProposal(null);
+    }
+  };
 
   const handleApply = async (e) => {
     e.preventDefault();
@@ -304,12 +319,44 @@ export default function JobDetailPage() {
                   </div>
                 </Link>
                 <div className="flex-1 min-w-0">
-                  <Link href={`/profile/${proposal.freelancer?.user?.id}`} className="text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-primary-500 transition-colors">
-                    {proposal.freelancer?.user?.name || 'Freelancer'}
-                  </Link>
-                  {proposal.proposedBudget && (
-                    <span className="ml-2 text-xs text-primary-500 font-medium">R$ {Number(proposal.proposedBudget).toFixed(2)}</span>
-                  )}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <Link href={`/profile/${proposal.freelancer?.user?.id}`} className="text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-primary-500 transition-colors">
+                        {proposal.freelancer?.user?.name || 'Freelancer'}
+                      </Link>
+                      {proposal.proposedBudget && (
+                        <span className="ml-2 text-xs text-primary-500 font-medium">R$ {Number(proposal.proposedBudget).toFixed(2)}</span>
+                      )}
+                    </div>
+                    {proposal.status === 'PENDING' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleProposalStatus(proposal.id, 'ACCEPTED')}
+                          disabled={updatingProposal === proposal.id}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <CheckCircle size={13} /> Aceitar
+                        </button>
+                        <button
+                          onClick={() => handleProposalStatus(proposal.id, 'REJECTED')}
+                          disabled={updatingProposal === proposal.id}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <XCircle size={13} /> Recusar
+                        </button>
+                      </div>
+                    )}
+                    {proposal.status === 'ACCEPTED' && (
+                      <span className="flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 rounded-lg text-xs font-medium">
+                        <CheckCircle size={13} /> Aceito
+                      </span>
+                    )}
+                    {proposal.status === 'REJECTED' && (
+                      <span className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 dark:bg-gray-800 rounded-lg text-xs font-medium">
+                        <XCircle size={13} /> Recusado
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{proposal.coverLetter}</p>
                 </div>
               </div>
