@@ -8,8 +8,9 @@ import {
   Home, Compass, Briefcase, LayoutDashboard, Plus,
   LogOut, Sun, Moon, UserCircle, Settings, MessageCircle,
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import NotificationPanel from '@/components/ui/NotificationPanel';
+import api from '@/lib/api';
 
 // Ordem: Home, Freelancers, Vagas | + | Chat, Atividade, Config
 const NAV_ITEMS = [
@@ -26,6 +27,22 @@ export function Sidebar() {
   const router = useRouter();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  const fetchUnread = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await api.get('/chat/unread-count');
+      setUnreadMessages(res.data.count || 0);
+    } catch { /* silencioso */ }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [user, fetchUnread]);
 
   const handleLogout = () => {
     logout();
@@ -92,8 +109,15 @@ export function Sidebar() {
         {NAV_ITEMS.slice(3).map(({ href, icon: Icon, label }) => {
           const active = isActive(href);
           return (
-            <Link key={href} href={href} className={itemCls}>
-              <Icon size={22} className={iconCls(active)} />
+            <Link key={href} href={href} className={itemCls} onClick={() => setUnreadMessages(0)}>
+              <div className="relative">
+                <Icon size={22} className={iconCls(active)} />
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                    {unreadMessages > 99 ? '99+' : unreadMessages}
+                  </span>
+                )}
+              </div>
               <span className={labelCls(active)}>{label}</span>
               {active && <span className="w-1 h-1 rounded-full bg-primary-500 mt-px" />}
             </Link>

@@ -5,6 +5,7 @@
 
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
+const { parsePagination } = require('../utils/helpers');
 
 /**
  * POST /api/chat
@@ -60,8 +61,7 @@ async function sendMessage(req, res) {
  */
 async function getConversation(req, res) {
   const { userId } = req.params;
-  const { page = 1, limit = 50 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { page, limit, skip } = parsePagination(req.query, 100);
 
   // Verifica se o usuario existe
   const otherUser = await prisma.user.findUnique({
@@ -82,7 +82,7 @@ async function getConversation(req, res) {
         ],
       },
       orderBy: { createdAt: 'desc' },
-      take: Number(limit),
+      take: limit,
       skip,
     }),
     prisma.chatMessage.count({
@@ -108,9 +108,9 @@ async function getConversation(req, res) {
   return res.json({
     messages: messages.reverse(), // Ordem cronologica (mais antigas primeiro)
     total,
-    page: Number(page),
-    limit: Number(limit),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
     otherUser,
   });
 }
@@ -168,8 +168,20 @@ async function listConversations(req, res) {
   return res.json({ conversations });
 }
 
+/**
+ * GET /api/chat/unread-count
+ * Retorna total de mensagens não lidas (para badge no ícone)
+ */
+async function getUnreadCount(req, res) {
+  const count = await prisma.chatMessage.count({
+    where: { receiverId: req.user.id, isRead: false },
+  });
+  return res.json({ count });
+}
+
 module.exports = {
   sendMessage,
   getConversation,
   listConversations,
+  getUnreadCount,
 };
