@@ -110,7 +110,7 @@ function FreelancerCard({ f }) {
           )}
           {f.hourlyRate && (
             <span className="text-xs font-semibold text-primary-500">
-              R$ {Number(f.hourlyRate).toFixed(0)}/h
+              R$ {Number(f.hourlyRate).toFixed(0)}{f.rateType === 'DAILY' ? '/dia' : '/h'}
             </span>
           )}
         </div>
