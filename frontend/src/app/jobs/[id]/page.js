@@ -22,8 +22,10 @@ const SERVICE_TYPE_LABELS = {
 
 const STATUS_LABELS = {
   OPEN: { label: 'Aberta', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  IN_PROGRESS: { label: 'Em andamento', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  IN_PROGRESS: { label: 'Preenchida', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  COMPLETED: { label: 'Concluída', color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
   CLOSED: { label: 'Encerrada', color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
+  CANCELLED: { label: 'Cancelada', color: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' },
 };
 
 export default function JobDetailPage() {
@@ -61,6 +63,10 @@ export default function JobDetailPage() {
     if (!user) { router.push('/auth/login'); return; }
     if (!coverLetter.trim()) { toast.error('Escreva uma mensagem'); return; }
 
+    if (coverLetter.trim().length < 30) {
+      toast.error('Mensagem muito curta (mínimo 30 caracteres)');
+      return;
+    }
     setApplying(true);
     try {
       await api.post('/proposals', {
@@ -72,7 +78,8 @@ export default function JobDetailPage() {
       setAlreadyApplied(true);
       setShowApply(false);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Erro ao enviar candidatura');
+      const firstError = err.response?.data?.errors?.[0]?.message;
+      toast.error(firstError || err.response?.data?.message || 'Erro ao enviar candidatura');
     } finally {
       setApplying(false);
     }
@@ -234,7 +241,12 @@ export default function JobDetailPage() {
                 maxLength={1000}
                 className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800 dark:text-gray-200 placeholder-gray-400 resize-none"
               />
-              <p className="text-right text-[10px] text-gray-400 mt-0.5">{coverLetter.length}/1000</p>
+              <div className="flex justify-between mt-0.5">
+                <span className={`text-[10px] ${coverLetter.trim().length < 30 ? 'text-red-400' : 'text-green-500'}`}>
+                  {coverLetter.trim().length < 30 ? `Mínimo 30 caracteres (${30 - coverLetter.trim().length} restantes)` : '✓ Ok'}
+                </span>
+                <span className="text-[10px] text-gray-400">{coverLetter.length}/1000</span>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">

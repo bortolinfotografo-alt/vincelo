@@ -379,13 +379,13 @@ export default function JobsPage() {
                       <h3 className="text-lg font-semibold">{job.title}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         job.status === 'OPEN' ? 'bg-green-100 text-green-700' :
-                        job.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                        job.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
                         job.status === 'COMPLETED' ? 'bg-surface-100 text-surface-600' :
                         'bg-red-100 text-red-700'
                       }`}>
                         {job.status === 'OPEN' ? 'Aberta' :
-                         job.status === 'IN_PROGRESS' ? 'Em andamento' :
-                         job.status === 'COMPLETED' ? 'Concluida' : 'Cancelada'}
+                         job.status === 'IN_PROGRESS' ? 'Preenchida' :
+                         job.status === 'COMPLETED' ? 'Concluída' : 'Cancelada'}
                       </span>
                     </div>
 
