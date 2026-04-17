@@ -531,7 +531,7 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
                 transform: `translate(-50%, -50%) rotate(${overlay.rotate || 0}deg)`,
                 cursor: 'move',
                 touchAction: 'none',
-                maxWidth: '85%',
+                width: '78%',
                 textAlign: overlay.align || 'center',
               }}
               onMouseDown={(e) => onTextDown(e, overlay.id)}
