@@ -60,7 +60,26 @@ function isAllowedMagicBytes(buffer) {
   return false;
 }
 
+/**
+ * Valida e normaliza parâmetros de paginação de query string.
+ * Previne valores negativos, zero, não-numéricos ou absurdamente grandes.
+ * @param {object} query - req.query
+ * @param {number} [maxLimit=100] - limite máximo permitido
+ * @returns {{ page: number, limit: number, skip: number }}
+ */
+function parsePagination(query, maxLimit = 100) {
+  let page = parseInt(query.page, 10);
+  let limit = parseInt(query.limit, 10);
+
+  if (!Number.isFinite(page) || page < 1) page = 1;
+  if (!Number.isFinite(limit) || limit < 1) limit = 20;
+  if (limit > maxLimit) limit = maxLimit;
+
+  return { page, limit, skip: (page - 1) * limit };
+}
+
 module.exports = {
   calculateAvgRating,
   isAllowedMagicBytes,
+  parsePagination,
 };
