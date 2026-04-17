@@ -454,7 +454,7 @@ function FreelancerProfile({ profile, followStats: initialFollowStats, isCurrent
             {/* Bio */}
             <div className="space-y-1">
               {profile.description && (
-                <p className="text-sm text-gray-800 dark:text-gray-300">{profile.description}</p>
+                <p className="text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap">{profile.description}</p>
               )}
               {profile.freelancer?.location && (
                 <p className="text-sm text-gray-500 flex items-center gap-1">
@@ -779,7 +779,7 @@ function CompanyProfile({ profile, followStats: initialFollowStats, isCurrentUse
             </div>
 
             {profile.description && (
-              <p className="text-sm text-gray-800 dark:text-gray-300">{profile.description}</p>
+              <p className="text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap">{profile.description}</p>
             )}
             {profile.company?.segment && (
               <p className="text-xs text-gray-500 mt-1">{profile.company.segment}</p>

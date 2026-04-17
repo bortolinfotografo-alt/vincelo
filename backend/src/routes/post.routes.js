@@ -40,6 +40,7 @@ router.post('/:id/like', ensureAuthenticated, postController.toggleLike);
 // Comentarios
 router.get('/:id/comments', optionalAuth, postController.getComments);
 router.post('/:id/comments', ensureAuthenticated, postController.addComment);
+router.put('/:id/comments/:commentId', ensureAuthenticated, postController.updateComment);
 router.delete('/:id/comments/:commentId', ensureAuthenticated, postController.deleteComment);
 
 // Salvar (toggle)

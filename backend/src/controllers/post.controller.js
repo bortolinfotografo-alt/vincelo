@@ -341,6 +341,34 @@ async function deleteComment(req, res) {
 }
 
 /**
+ * PUT /api/posts/:id/comments/:commentId
+ * Edita conteúdo do comentário (apenas o autor)
+ */
+async function updateComment(req, res) {
+  const { commentId } = req.params;
+  const { content } = req.body;
+
+  if (!content || content.trim().length === 0) {
+    return res.status(400).json({ message: 'Comentario nao pode ser vazio' });
+  }
+  if (content.length > 500) {
+    return res.status(400).json({ message: 'Comentario muito longo (max 500 chars)' });
+  }
+
+  const comment = await prisma.postComment.findUnique({ where: { id: commentId } });
+  if (!comment) return res.status(404).json({ message: 'Comentario nao encontrado' });
+  if (comment.authorId !== req.user.id) return res.status(403).json({ message: 'Sem permissao' });
+
+  const updated = await prisma.postComment.update({
+    where: { id: commentId },
+    data: { content: content.trim() },
+    include: { author: { select: { id: true, name: true, avatar: true } } },
+  });
+
+  return res.json(updated);
+}
+
+/**
  * POST /api/posts/:id/save
  * Salvar/remover dos salvos (toggle)
  */
@@ -401,6 +429,7 @@ module.exports = {
   getComments,
   addComment,
   deleteComment,
+  updateComment,
   toggleSave,
   getSavedPosts,
 };

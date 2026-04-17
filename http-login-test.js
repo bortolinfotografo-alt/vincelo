@@ -1,12 +1,7 @@
-require('dotenv').config();
-
-// Usando o módulo fetch do Node.js (disponível a partir do Node.js 18)
-// ou o módulo http para uma abordagem mais baixo nível
-
+// Teste de login usando o módulo HTTP nativo do Node.js
 const http = require('http');
 const querystring = require('querystring');
 
-// Testar login com o módulo http
 const postData = JSON.stringify({
   email: 'bortolinfotografo@gmail.com',
   password: 'senha123'
@@ -23,7 +18,6 @@ const options = {
   }
 };
 
-console.log('Testando login no backend...');
 const req = http.request(options, (res) => {
   let data = '';
 
@@ -33,18 +27,13 @@ const req = http.request(options, (res) => {
 
   res.on('end', () => {
     console.log(`Status: ${res.statusCode}`);
-    console.log(`Headers: ${JSON.stringify(res.headers, null, 2)}`);
-    try {
-      const jsonData = JSON.parse(data);
-      console.log('Resposta do login:', jsonData);
-    } catch (e) {
-      console.log('Resposta (raw):', data);
-    }
+    console.log(`Headers: ${JSON.stringify(res.headers)}`);
+    console.log(`Resposta: ${data}`);
   });
 });
 
-req.on('error', (e) => {
-  console.error('Erro na requisição:', e.message);
+req.on('error', (error) => {
+  console.error('Erro na requisição:', error.message);
 });
 
 req.write(postData);

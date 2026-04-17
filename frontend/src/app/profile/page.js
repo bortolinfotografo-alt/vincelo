@@ -5,12 +5,13 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/auth-context';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Upload, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight, X, Loader2 } from 'lucide-react';
+import ImageCropper from '@/components/ui/ImageCropper';
 
 // ── Calendário de disponibilidade ────────────────────────────
 function AvailabilityCalendar({ freelancerId, generalAvailable, onToggleGeneral, onSyncUser }) {
@@ -239,6 +240,8 @@ export default function ProfilePage() {
   const [tab, setTab] = useState('info');
   const [loading, setLoading] = useState(false);
   const [generalAvailable, setGeneralAvailable] = useState(false);
+  const [avatarCropSrc, setAvatarCropSrc] = useState(null);
+  const avatarInputRef = useRef(null);
 
   // Atualiza o contexto de auth para manter available sincronizado
   const syncAvailableInUser = useCallback((available) => {
@@ -306,15 +309,21 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files[0];
+  // Etapa 1: abre seletor, leva para o cropper
+  const handleAvatarSelect = (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
+    setAvatarCropSrc(URL.createObjectURL(file));
+    if (e.target) e.target.value = '';
+  };
 
+  // Etapa 2: recebe o blob recortado, faz upload
+  const handleAvatarCropDone = async (blob) => {
+    setAvatarCropSrc(null);
     const data = new FormData();
-    data.append('avatar', file);
-
+    data.append('avatar', new File([blob], 'avatar.jpg', { type: 'image/jpeg' }));
     try {
-      const res = await api.put('/users/profile', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await api.put('/users/profile', data);
       if (res.data.user) setUser(res.data.user);
       toast.success('Avatar atualizado!');
     } catch {
@@ -335,6 +344,17 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
+    <>
+    {avatarCropSrc && (
+      <ImageCropper
+        imageSrc={avatarCropSrc}
+        aspect={1}
+        circular
+        title="Recortar foto de perfil"
+        onDone={handleAvatarCropDone}
+        onCancel={() => setAvatarCropSrc(null)}
+      />
+    )}
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Meu Perfil</h1>
 
@@ -380,7 +400,7 @@ export default function ProfilePage() {
               <label className="btn-secondary text-sm cursor-pointer">
                 <Upload size={14} className="inline mr-1" />
                 Alterar Avatar
-                <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
               </label>
             </div>
           </div>
@@ -505,5 +525,6 @@ export default function ProfilePage() {
         </div>
       )}
     </div>
+    </>
   );
 }

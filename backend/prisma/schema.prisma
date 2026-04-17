@@ -383,6 +383,9 @@ enum MediaType {
 enum AspectRatio {
   LANDSCAPE
   PORTRAIT
+  SQUARE
+  LANDSCAPE_43
+  PORTRAIT_34
 }
 
 enum NotificationType {
