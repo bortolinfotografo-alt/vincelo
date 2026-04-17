@@ -141,6 +141,7 @@ async function login(req, res) {
 
   const isValidPassword = await comparePassword(password, user.password);
   if (!isValidPassword) {
+    logger.warn('[AUTH] Tentativa de login com senha invalida', { userId: user.id, ip: req.ip });
     return res.status(401).json({ message: 'Email ou senha invalidos' });
   }
 
@@ -159,6 +160,7 @@ async function login(req, res) {
       name: user.name,
       email: user.email,
       role: user.role,
+      adminRole: user.adminRole,
       isActive: user.isActive,
       phone: user.phone,
       description: user.description,
@@ -266,8 +268,8 @@ async function resetPassword(req, res) {
     return res.status(400).json({ message: 'Token e nova senha sao obrigatorios' });
   }
 
-  if (newPassword.length < 6) {
-    return res.status(400).json({ message: 'A nova senha deve ter pelo menos 6 caracteres' });
+  if (newPassword.length < 8) {
+    return res.status(400).json({ message: 'A nova senha deve ter pelo menos 8 caracteres' });
   }
 
   // Compara o hash do token recebido com o hash armazenado
@@ -321,6 +323,7 @@ async function me(req, res) {
     name: user.name,
     email: user.email,
     role: user.role,
+    adminRole: user.adminRole,
     isActive: user.isActive,
     phone: user.phone,
     description: user.description,

@@ -44,9 +44,26 @@ model User {
   storyLikes       StoryLike[]         @relation("StoryLikesUser")
   storyViews       StoryView[]         @relation("StoryViews")
   subscription     StripeSubscription?
+  adminRole        AdminRole           @default(USER)
+  auditLogs        AuditLog[]          @relation("AdminLogs")
 
   @@index([role, isActive])
+  @@index([adminRole])
   @@map("users")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  targetId  String?
+  action    String
+  details   Json?
+  createdAt DateTime @default(now())
+  admin     User     @relation("AdminLogs", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 model FreelancerProfile {
@@ -355,6 +372,13 @@ model Notification {
 enum UserRole {
   FREELANCER
   COMPANY
+}
+
+enum AdminRole {
+  USER
+  MODERATOR
+  ADMIN
+  OWNER
 }
 
 enum JobStatus {

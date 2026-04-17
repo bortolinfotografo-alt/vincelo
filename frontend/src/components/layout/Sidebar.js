@@ -6,7 +6,7 @@ import { useAuth } from '@/app/auth-context';
 import { useTheme } from '@/app/theme-context';
 import {
   Home, Compass, Briefcase, LayoutDashboard, Plus,
-  LogOut, Sun, Moon, UserCircle, Settings, MessageCircle,
+  LogOut, Sun, Moon, UserCircle, Settings, MessageCircle, Shield,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import NotificationPanel from '@/components/ui/NotificationPanel';
@@ -187,6 +187,17 @@ export function Sidebar() {
                 <LayoutDashboard size={16} className="text-gray-400" />
                 Dashboard
               </Link>
+
+              {['MODERATOR', 'ADMIN', 'OWNER'].includes(user?.adminRole) && (
+                <Link
+                  href="/admin"
+                  onClick={() => setSettingsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                >
+                  <Shield size={16} className="text-purple-500" />
+                  Painel Admin
+                </Link>
+              )}
 
               <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
                 <button

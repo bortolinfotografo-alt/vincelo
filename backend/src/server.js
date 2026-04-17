@@ -73,6 +73,7 @@ const storyRoutes = require('./routes/story.routes');
 const followRoutes = require('./routes/follow.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const googleAuthRoutes = require('./routes/google-auth.routes');
+const adminRoutes = require('./routes/admin.routes');
 const { cleanExpiredStories } = require('./controllers/story.controller');
 
 const app = express();
@@ -85,7 +86,18 @@ const PORT = process.env.PORT || 3001;
 // Segurança: headers HTTP com helmet
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // permite servir uploads
-  contentSecurityPolicy: false, // desativado para evitar conflito com Next.js em dev
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'none'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+    },
+  },
+  strictTransportSecurity: {
+    maxAge: 31536000, // 1 ano
+    includeSubDomains: true,
+    preload: true,
+  },
+  referrerPolicy: { policy: 'no-referrer' },
 }));
 
 // Compressão gzip de respostas
@@ -104,8 +116,8 @@ app.use('/api', generalLimiter);
 app.use('/api/payments/webhook', rawBodyMiddleware);
 
 // Parsing JSON e formularios
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Sanitização de inputs HTML (previne XSS armazenado)
 // Deve vir APÓS parsing e ANTES das rotas
@@ -155,6 +167,7 @@ app.use('/api/stories', storyRoutes);
 app.use('/api/follow', followRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/google-auth', googleAuthRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', async (req, res) => {
