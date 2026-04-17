@@ -375,7 +375,6 @@ function ChatContent() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">{selectedName}</h3>
-                    <p className="text-xs text-gray-400">Atualiza a cada 5s</p>
                   </div>
                 </div>
 
