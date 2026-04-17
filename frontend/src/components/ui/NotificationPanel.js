@@ -8,7 +8,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Activity, X, Heart, MessageCircle, UserPlus, Clapperboard, CheckCircle, XCircle } from 'lucide-react';
+import { Activity, X, Heart, MessageCircle, UserPlus, Clapperboard, CheckCircle, XCircle, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
@@ -23,6 +23,7 @@ function notifMeta(type) {
     case 'STORY_REPLY':       return { label: 'respondeu ao seu story',              Icon: MessageCircle, color: 'text-primary-500' };
     case 'PROPOSAL_ACCEPTED': return { label: 'aceitou sua candidatura! 🎉',          Icon: CheckCircle,   color: 'text-green-500'   };
     case 'PROPOSAL_REJECTED': return { label: 'recusou sua candidatura',              Icon: XCircle,       color: 'text-red-400'     };
+    case 'NEW_PROPOSAL':      return { label: 'se candidatou à sua vaga',             Icon: Briefcase,     color: 'text-primary-500' };
     default:                  return { label: 'interagiu com você',                   Icon: Activity,      color: 'text-gray-500'    };
   }
 }
@@ -34,6 +35,7 @@ function notifHref(notif) {
   if (notif.type === 'FOLLOW') return `/profile/${notif.actorId}`;
   if (notif.type === 'PROPOSAL_ACCEPTED') return `/chat?userId=${notif.actorId}`;
   if (notif.type === 'PROPOSAL_REJECTED') return `/jobs`;
+  if (notif.type === 'NEW_PROPOSAL') return `/dashboard`;
   return '/feed';
 }
 

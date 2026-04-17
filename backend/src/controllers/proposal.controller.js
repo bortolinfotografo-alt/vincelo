@@ -36,6 +36,7 @@ async function createProposal(req, res) {
   // Verifica se a vaga existe e esta aberta
   const job = await prisma.job.findUnique({
     where: { id: jobId },
+    include: { company: { select: { userId: true } } },
   });
 
   if (!job) {
@@ -86,6 +87,9 @@ async function createProposal(req, res) {
       },
     },
   });
+
+  // Notifica a empresa sobre a nova candidatura
+  await createNotification(job.company.userId, req.user.id, 'NEW_PROPOSAL');
 
   logger.info('[PROPOSAL] Candidatura criada', { proposalId: proposal.id, jobId, freelancerId: freelancer.id });
 

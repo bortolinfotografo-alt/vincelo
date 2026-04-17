@@ -397,6 +397,7 @@ enum NotificationType {
   STORY_REPLY
   PROPOSAL_ACCEPTED
   PROPOSAL_REJECTED
+  NEW_PROPOSAL
 }
 
 enum RateType {
