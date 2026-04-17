@@ -546,6 +546,9 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
                     lineHeight: 1.35,
                     textAlign: align,
                     letterSpacing: draftStyle.letterSpacing,
+                    overflow: 'hidden',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
                   }}
                 />
               </div>
