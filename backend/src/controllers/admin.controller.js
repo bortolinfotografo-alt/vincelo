@@ -267,7 +267,9 @@ async function listAuditLogs(req, res) {
   if (adminId) where.adminId = adminId;
   if (action) where.action = { contains: action, mode: 'insensitive' };
 
-  const [logs, total] = await Promise.all([
+  const USER_ACTIONS = ['BAN_USER', 'UNBAN_USER', 'UPDATE_ADMIN_ROLE'];
+
+  const [rawLogs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where,
       skip,
@@ -280,7 +282,83 @@ async function listAuditLogs(req, res) {
     prisma.auditLog.count({ where }),
   ]);
 
+  // Busca nomes dos alvos para ações sobre usuários
+  const targetIds = rawLogs
+    .filter((l) => USER_ACTIONS.includes(l.action) && l.targetId)
+    .map((l) => l.targetId);
+
+  const targetUsers = targetIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: targetIds } },
+        select: { id: true, name: true, avatar: true },
+      })
+    : [];
+
+  const targetMap = Object.fromEntries(targetUsers.map((u) => [u.id, u]));
+
+  const logs = rawLogs.map((l) => ({
+    ...l,
+    targetUser: USER_ACTIONS.includes(l.action) ? (targetMap[l.targetId] || null) : null,
+  }));
+
   return res.json({ logs, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+}
+
+/**
+ * GET /api/admin/jobs
+ * Lista vagas para moderação
+ */
+async function listJobs(req, res) {
+  const { page = 1, limit = 20, search } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const where = {};
+  if (search) {
+    where.OR = [
+      { title: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
+      { company: { companyName: { contains: search, mode: 'insensitive' } } },
+    ];
+  }
+
+  const [jobs, total] = await Promise.all([
+    prisma.job.findMany({
+      where,
+      skip,
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        serviceType: true,
+        location: true,
+        budget: true,
+        status: true,
+        createdAt: true,
+        company: { select: { companyName: true, user: { select: { id: true, name: true, avatar: true } } } },
+        _count: { select: { proposals: true } },
+      },
+    }),
+    prisma.job.count({ where }),
+  ]);
+
+  return res.json({ jobs, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+}
+
+/**
+ * DELETE /api/admin/jobs/:id
+ */
+async function deleteJob(req, res) {
+  const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+  if (!job) return res.status(404).json({ message: 'Vaga não encontrada' });
+
+  await prisma.job.delete({ where: { id: req.params.id } });
+  await logAction(req.user.id, 'DELETE_JOB', req.params.id, { companyId: job.companyId, title: job.title });
+
+  logger.info('[ADMIN] Vaga removida', { adminId: req.user.id, jobId: req.params.id });
+
+  return res.json({ message: 'Vaga removida com sucesso' });
 }
 
 /**
@@ -288,9 +366,11 @@ async function listAuditLogs(req, res) {
  * Dashboard stats gerais
  */
 async function getStats(req, res) {
-  const [totalUsers, activeUsers, totalPosts, totalStories, totalJobs, recentLogs] = await Promise.all([
+  const [totalUsers, activeUsers, totalFreelancers, totalCompanies, totalPosts, totalStories, totalJobs, recentLogs] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { isActive: true } }),
+    prisma.user.count({ where: { role: 'FREELANCER' } }),
+    prisma.user.count({ where: { role: 'COMPANY' } }),
     prisma.post.count(),
     prisma.story.count(),
     prisma.job.count(),
@@ -301,7 +381,12 @@ async function getStats(req, res) {
     }),
   ]);
 
-  return res.json({ totalUsers, activeUsers, bannedUsers: totalUsers - activeUsers, totalPosts, totalStories, totalJobs, recentLogs });
+  return res.json({
+    totalUsers, activeUsers, bannedUsers: totalUsers - activeUsers,
+    totalFreelancers, totalCompanies,
+    totalPosts, totalStories, totalJobs,
+    recentLogs,
+  });
 }
 
-module.exports = { listUsers, getUser, updateAdminRole, toggleUserActive, listPosts, listStories, deletePost, deleteStory, listAuditLogs, getStats };
+module.exports = { listUsers, getUser, updateAdminRole, toggleUserActive, listPosts, listStories, listJobs, deletePost, deleteStory, deleteJob, listAuditLogs, getStats };
