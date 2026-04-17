@@ -491,28 +491,40 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
           {textMode && (
             <div
               className="absolute inset-0 flex items-center justify-center z-10"
-              style={{ background: 'rgba(0,0,0,0.22)', userSelect: 'text', WebkitUserSelect: 'text' }}
-              onClick={(e) => e.stopPropagation()}
+              style={{ background: 'rgba(0,0,0,0.22)' }}
+              onClick={(e) => { e.stopPropagation(); inputRef.current?.focus(); }}
               onMouseDown={(e) => e.stopPropagation()}
             >
-              <div className="w-full px-6">
-                <textarea
-                  ref={inputRef}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Escreva algo..."
-                  maxLength={200}
-                  rows={4}
-                  className="bg-transparent focus:outline-none resize-none w-full block"
-                  style={{
-                    ...draftStyle,
-                    // display:inline do buildTextStyle não funciona em textarea — override
-                    display: 'block',
-                    width: '100%',
-                    placeholderColor: 'rgba(255,255,255,0.4)',
-                  }}
-                />
+              {/* Preview styled em tempo real — fundo acompanha o texto */}
+              <div style={{ width: '78%', textAlign: align, pointerEvents: 'none' }}>
+                {draft ? (
+                  <span style={draftStyle}>{draft}</span>
+                ) : (
+                  <span style={{ ...draftStyle, color: 'rgba(255,255,255,0.4)', background: 'none', textShadow: 'none' }}>
+                    Escreva algo...
+                  </span>
+                )}
               </div>
+
+              {/* Textarea invisível por cima — captura input e mostra cursor */}
+              <textarea
+                ref={inputRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                maxLength={200}
+                rows={Math.max(1, (draft.match(/\n/g) || []).length + 1)}
+                className="absolute inset-0 w-full h-full resize-none focus:outline-none"
+                style={{
+                  background: 'transparent',
+                  color: 'transparent',
+                  caretColor: 'white',
+                  border: 'none',
+                  padding: '0',
+                  fontSize: size,
+                  lineHeight: 1.35,
+                  textAlign: align,
+                }}
+              />
             </div>
           )}
 
