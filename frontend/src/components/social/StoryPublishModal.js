@@ -1,16 +1,68 @@
 'use client';
 
 // ============================================================
-// STORY PUBLISH MODAL — Estilo Instagram
-// • Drag + pinch para reenquadrar a mídia
-// • Botão "Aa" para adicionar texto sobre o story
-// • Cores, negrito, fundo do texto
-// • Múltiplos textos arrastáveis
+// STORY PUBLISH MODAL — Estilo Instagram (v2)
+// • Drag + pinch para reenquadrar
+// • Texto sobre o story: múltiplas fontes, cores, fundos
+// • Texto ocupa largura total (sem corte nas bordas)
+// • Arrastar texto = somente posição vertical (Y)
+// • Clique em "Aa" no modo texto = cicla entre fontes
 // ============================================================
 
 import { useRef, useState, useEffect } from 'react';
 import { X, Type, Bold } from 'lucide-react';
 
+// ── Fontes disponíveis ──────────────────────────────────────
+const FONTS = [
+  {
+    id: 'classic',
+    label: 'Clássico',
+    family: 'system-ui, -apple-system, sans-serif',
+    weight: '400',
+  },
+  {
+    id: 'strong',
+    label: 'Strong',
+    family: 'Impact, "Arial Black", sans-serif',
+    weight: '900',
+    spacing: 1,
+  },
+  {
+    id: 'serif',
+    label: 'Serif',
+    family: 'Georgia, "Times New Roman", serif',
+    weight: '400',
+    italic: true,
+  },
+  {
+    id: 'mono',
+    label: 'Typewriter',
+    family: '"Courier New", Courier, monospace',
+    weight: '400',
+  },
+  {
+    id: 'rounded',
+    label: 'Rounded',
+    family: '"Trebuchet MS", "Lucida Grande", Arial, sans-serif',
+    weight: '700',
+  },
+  {
+    id: 'neon',
+    label: 'Neon',
+    family: 'system-ui, sans-serif',
+    weight: '700',
+    glow: true,
+  },
+  {
+    id: 'outline',
+    label: 'Outline',
+    family: 'Impact, "Arial Black", sans-serif',
+    weight: '900',
+    outline: true,
+  },
+];
+
+// ── Paleta de cores ─────────────────────────────────────────
 const COLORS = [
   '#ffffff', '#000000', '#ff3b30', '#ff9500',
   '#ffcc00', '#34c759', '#5ac8fa', '#007aff',
@@ -23,43 +75,77 @@ const BG_OPTIONS = [
   { id: 'light', label: 'Claro' },
 ];
 
-function getTextStyle(t) {
+// ── Gera estilo do texto (editor + viewer) ──────────────────
+export function buildTextStyle(t) {
+  const font = FONTS.find((f) => f.id === t.font) || FONTS[0];
+
   const base = {
-    color: t.color,
+    fontFamily: font.family,
+    fontWeight: t.bold ? '700' : (font.weight || '400'),
+    fontStyle: font.italic ? 'italic' : 'normal',
+    letterSpacing: font.spacing ? `${font.spacing}px` : 'normal',
     fontSize: t.size,
-    fontWeight: t.bold ? '700' : '400',
+    lineHeight: 1.35,
     textAlign: 'center',
-    lineHeight: 1.3,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
-    maxWidth: 220,
     display: 'block',
-    textShadow: t.bg === 'none' ? '0 1px 6px rgba(0,0,0,0.9)' : 'none',
+    width: '100%',
   };
-  if (t.bg === 'dark')  return { ...base, background: 'rgba(0,0,0,0.65)', padding: '5px 14px', borderRadius: 8 };
-  if (t.bg === 'light') return { ...base, background: 'rgba(255,255,255,0.88)', color: '#111', padding: '5px 14px', borderRadius: 8 };
+
+  if (font.outline) {
+    // Texto vazado com borda colorida
+    Object.assign(base, {
+      WebkitTextStroke: `2px ${t.color}`,
+      color: 'transparent',
+      textShadow: 'none',
+    });
+    return base;
+  }
+
+  if (font.glow) {
+    Object.assign(base, {
+      color: t.color,
+      textShadow: `0 0 8px ${t.color}, 0 0 20px ${t.color}, 0 0 40px ${t.color}`,
+    });
+  } else {
+    base.color = t.bg === 'light' ? '#111' : t.color;
+    if (t.bg === 'none') base.textShadow = '0 1px 8px rgba(0,0,0,0.95)';
+  }
+
+  if (t.bg === 'dark' && !font.glow) {
+    Object.assign(base, { background: 'rgba(0,0,0,0.65)', padding: '6px 16px', borderRadius: 8 });
+  } else if (t.bg === 'light' && !font.glow) {
+    Object.assign(base, { background: 'rgba(255,255,255,0.88)', padding: '6px 16px', borderRadius: 8 });
+  }
+
   return base;
 }
 
+// ── Componente principal ────────────────────────────────────
 export default function StoryPublishModal({ file, onPublish, onCancel }) {
   const isVideo = file.type.startsWith('video/');
   const previewUrl = useRef(
     typeof window !== 'undefined' ? URL.createObjectURL(file) : ''
   ).current;
 
-  // ── Transform (reenquadrar) ─────────────────
+  // Transform (reenquadrar)
   const [pan, setPan]     = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
 
-  // ── Text overlays ───────────────────────────
-  const [textMode, setTextMode]   = useState(false);
-  const [draft, setDraft]         = useState('');
-  const [color, setColor]         = useState('#ffffff');
-  const [bg, setBg]               = useState('dark');
-  const [bold, setBold]           = useState(false);
-  const [size, setSize]           = useState(22);
-  const [overlays, setOverlays]   = useState([]);
-  const [activeId, setActiveId]   = useState(null);
+  // Texto
+  const [textMode, setTextMode] = useState(false);
+  const [draft, setDraft]       = useState('');
+  const [color, setColor]       = useState('#ffffff');
+  const [bg, setBg]             = useState('dark');
+  const [bold, setBold]         = useState(false);
+  const [size, setSize]         = useState(24);
+  const [fontIdx, setFontIdx]   = useState(0);
+  const [overlays, setOverlays] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+
+  // Snap visual ao centro
+  const [snapVisible, setSnapVisible] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -67,24 +153,22 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
   const inputRef     = useRef(null);
   const nextId       = useRef(1);
 
-  // Refs para rastreio de drag (sem causar re-render)
+  // Refs de drag (sem re-render)
   const mediaDrag = useRef({ active: false, sx: 0, sy: 0, spx: 0, spy: 0 });
   const pinchRef  = useRef({ active: false, startDist: 0, startScale: 1 });
-  const textDrag  = useRef({ active: false, id: null, sx: 0, sy: 0, stx: 0, sty: 0 });
+  const textDrag  = useRef({ active: false, id: null, sy: 0, sty: 0 });
   const didMove   = useRef(false);
 
-  // ── Focus input ao entrar em modo texto ─────
   useEffect(() => {
     if (textMode) setTimeout(() => inputRef.current?.focus(), 80);
   }, [textMode]);
 
-  // ── Helpers de coordenadas ──────────────────
   function clientXY(e) {
     if (e.touches?.length > 0) return [e.touches[0].clientX, e.touches[0].clientY];
     return [e.clientX, e.clientY];
   }
 
-  // ── Media: drag start ───────────────────────
+  // ── Media drag ──────────────────────────────
   function onMediaDown(e) {
     if (textMode) return;
     if (e.touches?.length === 2) return;
@@ -94,7 +178,6 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
     didMove.current = false;
   }
 
-  // ── Move (media pan + pinch + text drag) ────
   function onMove(e) {
     // Pinch zoom
     if (e.touches?.length === 2) {
@@ -104,23 +187,26 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
       if (!pinchRef.current.active) {
         pinchRef.current = { active: true, startDist: dist, startScale: scale };
       } else {
-        const ns = Math.max(1, Math.min(4, pinchRef.current.startScale * (dist / pinchRef.current.startDist)));
-        setScale(ns);
+        setScale(Math.max(1, Math.min(4, pinchRef.current.startScale * (dist / pinchRef.current.startDist))));
       }
       return;
     }
 
-    // Text drag
+    // Text drag (somente Y)
     if (textDrag.current.active) {
       const container = containerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      const [cx, cy] = clientXY(e);
-      const dx = ((cx - textDrag.current.sx) / rect.width)  * 100;
+      const [, cy] = clientXY(e);
       const dy = ((cy - textDrag.current.sy) / rect.height) * 100;
-      const nx = Math.max(5, Math.min(95, textDrag.current.stx + dx));
-      const ny = Math.max(5, Math.min(95, textDrag.current.sty + dy));
-      setOverlays(prev => prev.map(t => t.id === textDrag.current.id ? { ...t, x: nx, y: ny } : t));
+      let ny = Math.max(5, Math.min(95, textDrag.current.sty + dy));
+
+      // Snap ao centro (±3%)
+      const snapping = Math.abs(ny - 50) < 3;
+      setSnapVisible(snapping);
+      if (snapping) ny = 50;
+
+      setOverlays((prev) => prev.map((t) => t.id === textDrag.current.id ? { ...t, y: ny } : t));
       didMove.current = true;
       return;
     }
@@ -128,9 +214,10 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
     // Media pan
     if (mediaDrag.current.active) {
       const [cx, cy] = clientXY(e);
-      const dx = (cx - mediaDrag.current.sx) / scale;
-      const dy = (cy - mediaDrag.current.sy) / scale;
-      setPan({ x: mediaDrag.current.spx + dx, y: mediaDrag.current.spy + dy });
+      setPan({
+        x: mediaDrag.current.spx + (cx - mediaDrag.current.sx) / scale,
+        y: mediaDrag.current.spy + (cy - mediaDrag.current.sy) / scale,
+      });
       didMove.current = true;
     }
   }
@@ -139,30 +226,45 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
     mediaDrag.current.active = false;
     textDrag.current.active  = false;
     pinchRef.current.active  = false;
+    setSnapVisible(false);
   }
 
-  // Scroll para zoom (desktop)
   function onWheel(e) {
     if (textMode) return;
     e.preventDefault();
-    setScale(s => Math.max(1, Math.min(4, s + (e.deltaY > 0 ? -0.08 : 0.08))));
+    setScale((s) => Math.max(1, Math.min(4, s + (e.deltaY > 0 ? -0.08 : 0.08))));
   }
 
-  // ── Text overlay drag start ─────────────────
+  // ── Text drag start ─────────────────────────
   function onTextDown(e, id) {
     e.stopPropagation();
     setActiveId(id);
-    const [cx, cy] = clientXY(e);
-    const t = overlays.find(o => o.id === id);
-    textDrag.current = { active: true, id, sx: cx, sy: cy, stx: t.x, sty: t.y };
+    const [, cy] = clientXY(e);
+    const t = overlays.find((o) => o.id === id);
+    textDrag.current = { active: true, id, sy: cy, sty: t.y };
     didMove.current = false;
   }
 
-  // ── Confirmar texto ─────────────────────────
+  // ── Cicla fonte ao clicar "Aa" no modo texto ─
+  function cycleFont() {
+    if (!textMode) { setTextMode(true); setDraft(''); return; }
+    setFontIdx((i) => (i + 1) % FONTS.length);
+  }
+
+  // ── Confirma texto ──────────────────────────
   function confirmText() {
     if (!draft.trim()) { setTextMode(false); return; }
     const id = nextId.current++;
-    setOverlays(prev => [...prev, { id, content: draft.trim(), x: 50, y: 50, color, bg, bold, size }]);
+    setOverlays((prev) => [...prev, {
+      id,
+      content: draft.trim(),
+      y: 50,
+      color,
+      bg,
+      bold,
+      size,
+      font: FONTS[fontIdx].id,
+    }]);
     setDraft('');
     setTextMode(false);
     setActiveId(id);
@@ -182,8 +284,8 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
     }
   }
 
-  // ── Preview do texto digitando ──────────────
-  const draftStyle = getTextStyle({ color, bg, bold, size });
+  const currentFont = FONTS[fontIdx];
+  const draftStyle  = buildTextStyle({ color, bg, bold, size, font: currentFont.id });
 
   return (
     <div
@@ -194,21 +296,28 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
       <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0 z-20">
         {!textMode ? (
           <>
-            <button onClick={onCancel} className="text-white/75 hover:text-white transition-colors">
+            <button onClick={onCancel} className="text-white/70 hover:text-white transition-colors p-1">
               <X size={26} />
             </button>
             <button
-              onClick={() => { setTextMode(true); setDraft(''); }}
-              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white rounded-full px-4 py-1.5 text-sm font-bold tracking-wide transition-colors"
+              onClick={cycleFont}
+              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white rounded-full px-4 py-1.5 font-bold text-sm tracking-wide transition-colors"
+              title="Adicionar texto"
             >
               <Type size={15} /> Aa
             </button>
           </>
         ) : (
           <>
-            <button onClick={() => setTextMode(false)} className="text-white/75 hover:text-white transition-colors">
-              <X size={24} />
+            {/* No modo texto: "Aa" cicla fonte */}
+            <button
+              onClick={cycleFont}
+              className="bg-white/15 hover:bg-white/25 text-white rounded-full px-4 py-1.5 font-bold text-sm tracking-wide transition-colors"
+              title={`Fonte: ${currentFont.label}`}
+            >
+              Aa
             </button>
+            <span className="text-white/50 text-xs">{currentFont.label}</span>
             <button
               onClick={confirmText}
               className="bg-primary-500 hover:bg-primary-600 text-white rounded-full px-5 py-1.5 text-sm font-bold transition-colors"
@@ -231,7 +340,7 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
             maxWidth: 327,
             width: '100%',
             touchAction: 'none',
-            cursor: textMode ? 'text' : 'grab',
+            cursor: textMode ? 'text' : (mediaDrag.current.active ? 'grabbing' : 'grab'),
           }}
           onMouseDown={onMediaDown}
           onMouseMove={onMove}
@@ -259,57 +368,70 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
             )}
           </div>
 
-          {/* Hint de reenquadrar (some após interação) */}
+          {/* Hint reenquadrar */}
           {scale === 1 && pan.x === 0 && pan.y === 0 && !textMode && overlays.length === 0 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none">
-              <span className="text-white/50 text-xs bg-black/30 rounded-full px-3 py-1">
-                Arraste para reenquadrar · Pinça para zoom
+            <div className="absolute bottom-4 inset-x-0 flex justify-center pointer-events-none">
+              <span className="text-white/45 text-xs bg-black/30 rounded-full px-3 py-1">
+                Arraste · Pinça para zoom
               </span>
             </div>
           )}
 
-          {/* Modo texto: input centralizado + overlay escuro */}
-          {textMode && (
-            <div
-              className="absolute inset-0 flex items-center justify-center z-10"
-              style={{ background: 'rgba(0,0,0,0.25)' }}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <textarea
-                ref={inputRef}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Escreva algo..."
-                maxLength={150}
-                rows={3}
-                className="bg-transparent focus:outline-none resize-none placeholder-white/40 text-center w-4/5"
-                style={draftStyle}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmText(); } }}
-              />
+          {/* Linha de snap central (aparece ao arrastar texto perto do centro) */}
+          {snapVisible && (
+            <div className="absolute inset-x-0 top-1/2 pointer-events-none z-20">
+              <div className="w-full h-px bg-white/60" style={{ boxShadow: '0 0 4px rgba(255,255,255,0.8)' }} />
             </div>
           )}
 
-          {/* Textos posicionados e arrastáveis */}
-          {overlays.map(overlay => (
+          {/* Input de texto (modo texto) */}
+          {textMode && (
+            <div
+              className="absolute inset-0 flex items-center justify-center z-10"
+              style={{ background: 'rgba(0,0,0,0.22)' }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="w-full px-4">
+                <textarea
+                  ref={inputRef}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Escreva algo..."
+                  maxLength={150}
+                  rows={3}
+                  className="bg-transparent focus:outline-none resize-none placeholder-white/40 w-full text-center block"
+                  style={draftStyle}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmText(); }
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Textos posicionados (somente arrasto vertical) */}
+          {overlays.map((overlay) => (
             <div
               key={overlay.id}
-              className="absolute z-[12]"
+              className="absolute inset-x-0 z-[12] px-4"
               style={{
-                left: `${overlay.x}%`,
                 top: `${overlay.y}%`,
-                transform: 'translate(-50%, -50%)',
-                cursor: 'move',
+                transform: 'translateY(-50%)',
+                cursor: 'ns-resize',
+                textAlign: 'center',
               }}
               onMouseDown={(e) => onTextDown(e, overlay.id)}
               onTouchStart={(e) => onTextDown(e, overlay.id)}
             >
-              <span style={getTextStyle(overlay)}>{overlay.content}</span>
+              <span style={buildTextStyle(overlay)}>{overlay.content}</span>
+
+              {/* Botão deletar (somente quando ativo) */}
               {activeId === overlay.id && (
                 <button
-                  className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg"
-                  onMouseDown={(e) => { e.stopPropagation(); setOverlays(p => p.filter(t => t.id !== overlay.id)); setActiveId(null); }}
-                  onTouchStart={(e) => { e.stopPropagation(); setOverlays(p => p.filter(t => t.id !== overlay.id)); setActiveId(null); }}
+                  className="absolute -top-3 right-4 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg z-20"
+                  onMouseDown={(e) => { e.stopPropagation(); setOverlays((p) => p.filter((t) => t.id !== overlay.id)); setActiveId(null); }}
+                  onTouchStart={(e) => { e.stopPropagation(); setOverlays((p) => p.filter((t) => t.id !== overlay.id)); setActiveId(null); }}
                 >
                   ×
                 </button>
@@ -321,20 +443,21 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
 
       {/* ── Toolbar de texto ─────────────────── */}
       {textMode && (
-        <div className="flex-shrink-0 px-4 pb-4 space-y-3 z-20">
+        <div className="flex-shrink-0 px-4 pb-3 pt-1 space-y-3 z-20">
+
           {/* Paleta de cores */}
           <div className="flex items-center justify-center gap-2 flex-wrap">
-            {COLORS.map(c => (
+            {COLORS.map((c) => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className="rounded-full transition-all flex-shrink-0"
+                className="rounded-full flex-shrink-0 transition-all"
                 style={{
                   background: c,
                   width: color === c ? 30 : 26,
                   height: color === c ? 30 : 26,
-                  border: color === c ? '3px solid white' : '2px solid rgba(255,255,255,0.3)',
-                  boxShadow: color === c ? '0 0 0 2px rgba(0,0,0,0.4)' : 'none',
+                  border: color === c ? '3px solid white' : '2px solid rgba(255,255,255,0.25)',
+                  boxShadow: color === c ? '0 0 0 2px rgba(0,0,0,0.5)' : 'none',
                 }}
               />
             ))}
@@ -343,16 +466,20 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
           {/* Estilo: negrito + fundo */}
           <div className="flex items-center justify-center gap-2">
             <button
-              onClick={() => setBold(b => !b)}
-              className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors ${bold ? 'bg-white border-white' : 'border-white/40'}`}
+              onClick={() => setBold((b) => !b)}
+              className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors ${
+                bold ? 'bg-white border-white' : 'border-white/35 bg-transparent'
+              }`}
             >
               <Bold size={16} className={bold ? 'text-black' : 'text-white'} />
             </button>
-            {BG_OPTIONS.map(opt => (
+            {BG_OPTIONS.map((opt) => (
               <button
                 key={opt.id}
                 onClick={() => setBg(opt.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${bg === opt.id ? 'bg-white text-black border-white' : 'border-white/35 text-white/80'}`}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  bg === opt.id ? 'bg-white text-black border-white' : 'border-white/35 text-white/80'
+                }`}
               >
                 {opt.label}
               </button>
@@ -361,19 +488,50 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
 
           {/* Tamanho da fonte */}
           <div className="flex items-center gap-3 px-2">
-            <span className="text-white/50 text-xs font-bold" style={{ fontSize: 12 }}>A</span>
+            <span className="text-white/45 font-bold" style={{ fontSize: 12 }}>A</span>
             <input
-              type="range" min={14} max={44} step={1}
+              type="range" min={14} max={48} step={1}
               value={size}
               onChange={(e) => setSize(Number(e.target.value))}
-              className="flex-1 accent-primary-500 h-1"
+              className="flex-1 accent-primary-500 h-1 cursor-pointer"
             />
-            <span className="text-white font-bold" style={{ fontSize: 20 }}>A</span>
+            <span className="text-white font-bold" style={{ fontSize: 22 }}>A</span>
+          </div>
+
+          {/* Prévia das fontes (scroll horizontal) */}
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {FONTS.map((f, i) => (
+              <button
+                key={f.id}
+                onClick={() => setFontIdx(i)}
+                className={`flex-shrink-0 px-3 py-2 rounded-xl border transition-all ${
+                  fontIdx === i
+                    ? 'border-white bg-white/15'
+                    : 'border-white/20 bg-white/5 hover:bg-white/10'
+                }`}
+              >
+                <span
+                  style={{
+                    fontFamily: f.family,
+                    fontWeight: f.weight || '400',
+                    fontStyle: f.italic ? 'italic' : 'normal',
+                    color: f.outline ? 'transparent' : '#fff',
+                    WebkitTextStroke: f.outline ? '1.5px #fff' : undefined,
+                    textShadow: f.glow ? '0 0 8px #fff, 0 0 16px #fff' : undefined,
+                    fontSize: 14,
+                    display: 'block',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {f.label}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* ── Botões de publicar ────────────────── */}
+      {/* ── Botões publicar ──────────────────── */}
       {!textMode && (
         <div className="flex-shrink-0 flex gap-3 px-4 pb-6 pt-2 z-20">
           <button

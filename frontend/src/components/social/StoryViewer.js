@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Eye, BadgeCheck, Pause, Play, Heart, Share2, Send } from 'lucide-react';
 import StoryProgressBar from './StoryProgressBar';
+import { buildTextStyle } from './StoryPublishModal';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
 import Link from 'next/link';
@@ -343,25 +344,10 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
             return parsed.texts.map((t) => (
               <div
                 key={t.id}
-                className="absolute z-10 pointer-events-none"
-                style={{ left: `${t.x}%`, top: `${t.y}%`, transform: 'translate(-50%, -50%)' }}
+                className="absolute inset-x-0 z-10 pointer-events-none px-4"
+                style={{ top: `${t.y}%`, transform: 'translateY(-50%)', textAlign: 'center' }}
               >
-                <span style={{
-                  color: t.color,
-                  fontSize: t.size,
-                  fontWeight: t.bold ? '700' : '400',
-                  textAlign: 'center',
-                  lineHeight: 1.3,
-                  display: 'block',
-                  maxWidth: 220,
-                  wordBreak: 'break-word',
-                  whiteSpace: 'pre-wrap',
-                  textShadow: t.bg === 'none' ? '0 1px 6px rgba(0,0,0,0.9)' : 'none',
-                  ...(t.bg === 'dark'  ? { background: 'rgba(0,0,0,0.65)', padding: '5px 14px', borderRadius: 8 } : {}),
-                  ...(t.bg === 'light' ? { background: 'rgba(255,255,255,0.88)', color: '#111', padding: '5px 14px', borderRadius: 8 } : {}),
-                }}>
-                  {t.content}
-                </span>
+                <span style={buildTextStyle(t)}>{t.content}</span>
               </div>
             ));
           }
