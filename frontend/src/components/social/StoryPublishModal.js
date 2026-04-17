@@ -495,36 +495,60 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
               onClick={(e) => { e.stopPropagation(); inputRef.current?.focus(); }}
               onMouseDown={(e) => e.stopPropagation()}
             >
-              {/* Preview styled em tempo real — fundo acompanha o texto */}
-              <div style={{ width: '78%', textAlign: align, pointerEvents: 'none' }}>
-                {draft ? (
-                  <span style={draftStyle}>{draft}</span>
-                ) : (
-                  <span style={{ ...draftStyle, color: 'rgba(255,255,255,0.4)', background: 'none', textShadow: 'none' }}>
+              {/* Wrapper centralizado — textarea cobre exatamente este bloco */}
+              <div style={{ width: '78%', textAlign: align, position: 'relative' }}>
+
+                {/* Preview styled em tempo real */}
+                <span
+                  style={{
+                    ...draftStyle,
+                    display: 'block',
+                    visibility: draft ? 'visible' : 'hidden',
+                    pointerEvents: 'none',
+                    // mínimo de 1 linha para manter altura mesmo vazio
+                    minHeight: `${size * 1.35 + 10}px`,
+                  }}
+                >
+                  {draft || ' '}
+                </span>
+
+                {/* Placeholder */}
+                {!draft && (
+                  <span
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    style={{
+                      color: 'rgba(255,255,255,0.45)',
+                      fontSize: size,
+                      fontFamily: currentFont.family,
+                      textAlign: 'center',
+                    }}
+                  >
                     Escreva algo...
                   </span>
                 )}
-              </div>
 
-              {/* Textarea invisível por cima — captura input e mostra cursor */}
-              <textarea
-                ref={inputRef}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                maxLength={200}
-                rows={Math.max(1, (draft.match(/\n/g) || []).length + 1)}
-                className="absolute inset-0 w-full h-full resize-none focus:outline-none"
-                style={{
-                  background: 'transparent',
-                  color: 'transparent',
-                  caretColor: 'white',
-                  border: 'none',
-                  padding: '0',
-                  fontSize: size,
-                  lineHeight: 1.35,
-                  textAlign: align,
-                }}
-              />
+                {/* Textarea invisível sobre o preview — cursor alinhado com o texto */}
+                <textarea
+                  ref={inputRef}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  maxLength={200}
+                  className="absolute inset-0 w-full h-full resize-none focus:outline-none"
+                  style={{
+                    background: 'transparent',
+                    color: 'transparent',
+                    caretColor: 'white',
+                    border: 'none',
+                    padding: '5px 0',
+                    fontSize: size,
+                    fontFamily: currentFont.family,
+                    fontWeight: draftStyle.fontWeight,
+                    lineHeight: 1.35,
+                    textAlign: align,
+                    letterSpacing: draftStyle.letterSpacing,
+                  }}
+                />
+              </div>
             </div>
           )}
 
