@@ -11,7 +11,6 @@ import { useAuth } from '@/app/auth-context';
 import api from '@/lib/api';
 import StoriesBar from '@/components/social/StoriesBar';
 import PostCard from '@/components/social/PostCard';
-import CreatePost from '@/components/social/CreatePost';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import {
   Compass, Users, Bookmark, UserPlus, BadgeCheck,
@@ -343,8 +342,7 @@ function FeedContent() {
   useEffect(() => { setPage(1); loadPosts(1, true); }, [tab, activeTag]);
 
   const handleLoadMore = () => { const n = page + 1; setPage(n); loadPosts(n, false); };
-  const handlePostCreated = (p) => setPosts((prev) => [p, ...prev]);
-  const handlePostDeleted = (id) => setPosts((prev) => prev.filter((p) => p.id !== id));
+const handlePostDeleted = (id) => setPosts((prev) => prev.filter((p) => p.id !== id));
   const handleHashtagSearch = (tag) => router.push(`/feed?tag=${encodeURIComponent(tag)}`);
   const handleClearTag = () => router.push('/feed');
 
@@ -374,7 +372,6 @@ function FeedContent() {
               onClearTag={handleClearTag}
             />
 
-            {user && !activeTag && <CreatePost onPostCreated={handlePostCreated} />}
             {!activeTag && <FeedTabs tab={tab} setTab={setTab} />}
 
             {loading ? (
