@@ -8,6 +8,9 @@ const nextConfig = {
     staleTimes: { dynamic: 0, static: 180 },
   },
 
+  // Aumenta limite de body para uploads de mídia via rewrite
+  serverExternalPackages: [],
+
   // Proxy: redireciona /api/* para o backend (resolve cookies cross-origin em dev e produção)
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL ||

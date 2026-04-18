@@ -262,7 +262,7 @@ function ChatContent() {
       if (fileToSend) data.append('media', fileToSend);
 
       // Não define Content-Type manualmente — axios detecta FormData e inclui o boundary automaticamente
-      await api.post('/chat', data);
+      await api.post('/chat', data, { timeout: 60000 });
       fetchMessages(selectedUser.id);
       fetchConversations();
     } catch (err) {
@@ -270,13 +270,14 @@ function ChatContent() {
       setNewMessage(content);
       if (fileToSend) {
         setAttachFile(fileToSend);
-        // Restaura o preview também
         const ext = fileToSend.name.split('.').pop().toLowerCase();
         const isImg = fileToSend.type.startsWith('image/') || ['jpg','jpeg','png','webp','gif'].includes(ext);
         const isVid = fileToSend.type.startsWith('video/') || ['mp4','mov','avi','webm'].includes(ext);
         if (isImg || isVid) setAttachPreview(URL.createObjectURL(fileToSend));
       }
-      toast.error('Erro ao enviar arquivo');
+      const msg = err?.response?.data?.message || err?.message || 'Erro ao enviar';
+      console.error('[Chat] Erro ao enviar:', err?.response?.status, msg);
+      toast.error(msg);
     } finally {
       setSending(false);
     }
