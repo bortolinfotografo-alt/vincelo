@@ -33,7 +33,7 @@ function CreatePostModal({ onClose }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden bg-white dark:bg-gray-900 rounded-xl"
+        className="w-full max-w-2xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden bg-white dark:bg-gray-900 rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
