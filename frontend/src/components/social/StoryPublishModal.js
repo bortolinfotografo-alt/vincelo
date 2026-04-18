@@ -10,7 +10,7 @@
 // ============================================================
 
 import { useRef, useState, useEffect } from 'react';
-import { X, Type, Bold, RotateCw, AlignLeft, AlignCenter, AlignRight, Check } from 'lucide-react';
+import { X, Type, Bold, RotateCw, AlignLeft, AlignCenter, AlignRight, Check, Volume2, VolumeX } from 'lucide-react';
 
 // ── Fontes disponíveis ──────────────────────────────────────
 const FONTS = [
@@ -128,6 +128,13 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
   const previewUrl = useRef(
     typeof window !== 'undefined' ? URL.createObjectURL(file) : ''
   ).current;
+
+  // Áudio do vídeo preview
+  const [videoMuted, setVideoMuted] = useState(false);
+  const videoPreviewRef = useRef(null);
+  useEffect(() => {
+    if (videoPreviewRef.current) videoPreviewRef.current.muted = videoMuted;
+  }, [videoMuted]);
 
   // Transform (reenquadrar)
   const [pan, setPan]     = useState({ x: 0, y: 0 });
@@ -459,12 +466,24 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
             }}
           >
             {isVideo ? (
-              <video src={previewUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+              <video ref={videoPreviewRef} src={previewUrl} autoPlay loop playsInline className="w-full h-full object-cover" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" draggable={false} />
             )}
           </div>
+
+          {/* Botão de mute/unmute (só para vídeo) */}
+          {isVideo && (
+            <button
+              type="button"
+              onClick={() => setVideoMuted((m) => !m)}
+              className="absolute bottom-4 right-4 z-30 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+              title={videoMuted ? 'Ativar áudio' : 'Mutar'}
+            >
+              {videoMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
+          )}
 
           {/* Hint reenquadrar */}
           {scale === 1 && pan.x === 0 && pan.y === 0 && !textMode && overlays.length === 0 && (
