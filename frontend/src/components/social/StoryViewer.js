@@ -54,6 +54,11 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     else video.play().catch(() => {});
   }, [isPaused]);
 
+  // React não atualiza a prop `muted` no DOM corretamente — força via ref
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = muted;
+  }, [muted]);
+
   // Registra visualização ao mudar de story
   useEffect(() => {
     if (!story || !user) return;
