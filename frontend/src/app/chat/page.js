@@ -107,7 +107,32 @@ function fileIsVideo(file) {
 // ── Lightbox com navegação entre imagens ─────────────────────
 function ImageLightbox({ items, startIndex = 0, onClose }) {
   const [idx, setIdx] = useState(startIndex);
+  const [downloading, setDownloading] = useState(false);
   const current = items[idx];
+
+  const handleDownload = async (e) => {
+    e.stopPropagation();
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(current.url);
+      const blob = await res.blob();
+      const ext = current.url.split('?')[0].split('.').pop() || 'jpg';
+      const filename = `arquivo.${ext}`;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      // fallback: abre em nova aba se fetch falhar (CORS restrito)
+      window.open(current.url, '_blank');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     const handler = (e) => {
@@ -125,11 +150,13 @@ function ImageLightbox({ items, startIndex = 0, onClose }) {
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10" onClick={(e) => e.stopPropagation()}>
         <span className="text-white/60 text-sm">{items.length > 1 ? `${idx + 1} / ${items.length}` : ''}</span>
         <div className="flex items-center gap-2">
-          <a href={current.url} download target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
-            onClick={(e) => e.stopPropagation()}>
-            <Download size={14} /> Baixar
-          </a>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors disabled:opacity-50"
+          >
+            <Download size={14} /> {downloading ? 'Baixando...' : 'Baixar'}
+          </button>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
             <X size={16} />
           </button>
