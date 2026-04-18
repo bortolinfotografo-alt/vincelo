@@ -386,13 +386,29 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
             <button onClick={onCancel} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white transition-colors">
               <X size={20} />
             </button>
-            <button
-              onClick={cycleFont}
-              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white rounded-full px-4 py-1.5 font-bold text-sm tracking-wide transition-colors"
-              title="Adicionar texto"
-            >
-              <Type size={15} /> Aa
-            </button>
+            <div className="flex items-center gap-2">
+              {isVideo && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !videoMuted;
+                    setVideoMuted(next);
+                    if (videoPreviewRef.current) videoPreviewRef.current.muted = next;
+                  }}
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors"
+                  title={videoMuted ? 'Ativar áudio' : 'Mutar'}
+                >
+                  {videoMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                </button>
+              )}
+              <button
+                onClick={cycleFont}
+                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white rounded-full px-4 py-1.5 font-bold text-sm tracking-wide transition-colors"
+                title="Adicionar texto"
+              >
+                <Type size={15} /> Aa
+              </button>
+            </div>
           </>
         ) : (
           <>
@@ -472,22 +488,6 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
               <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" draggable={false} />
             )}
           </div>
-
-          {/* Botão de mute/unmute (só para vídeo) */}
-          {isVideo && (
-            <button
-              type="button"
-              onClick={() => {
-                const next = !videoMuted;
-                setVideoMuted(next);
-                if (videoPreviewRef.current) videoPreviewRef.current.muted = next;
-              }}
-              className="absolute top-4 right-4 z-30 bg-black/60 text-white rounded-full p-2.5 hover:bg-black/80 transition-colors"
-              title={videoMuted ? 'Ativar áudio' : 'Mutar'}
-            >
-              {videoMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-            </button>
-          )}
 
           {/* Hint reenquadrar */}
           {scale === 1 && pan.x === 0 && pan.y === 0 && !textMode && overlays.length === 0 && (
