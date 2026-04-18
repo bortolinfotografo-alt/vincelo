@@ -43,7 +43,7 @@ function formatStory(story, currentUserId) {
  * Cria um novo story (expira em 24h)
  */
 async function createStory(req, res) {
-  const { caption } = req.body;
+  const { caption, muteAudio } = req.body;
   const file = req.file;
 
   if (!file) {
@@ -60,6 +60,7 @@ async function createStory(req, res) {
       mediaUrl,
       mediaType,
       caption: caption || null,
+      muteAudio: muteAudio === 'true' || muteAudio === true,
       expiresAt,
     },
     include: storyInclude(req.user.id),

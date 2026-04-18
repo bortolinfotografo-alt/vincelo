@@ -308,6 +308,7 @@ model Story {
   mediaUrl      String
   mediaType     MediaType
   caption       String?
+  muteAudio     Boolean        @default(false)
   createdAt     DateTime       @default(now())
   expiresAt     DateTime
   notifications Notification[]

@@ -122,11 +122,12 @@ export default function StoriesBar() {
   };
 
   // ── Publica story (chamado pelo StoryPublishModal) ────────
-  const handlePublish = async (file, caption) => {
+  const handlePublish = async (file, caption, muteAudio = false) => {
     setUploading(true);
     const data = new FormData();
     data.append('media', file);
     if (caption) data.append('caption', caption);
+    data.append('muteAudio', String(muteAudio));
 
     try {
       await api.post('/stories', data, { headers: { 'Content-Type': 'multipart/form-data' } });

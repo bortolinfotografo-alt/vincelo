@@ -30,7 +30,7 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
   const [replyLoading, setReplyLoading] = useState(false);
   const [replyFocused, setReplyFocused] = useState(false);
 
-  const [muted, setMuted] = useState(true); // inicia mutado por política de autoplay; usuário pode ativar
+  const [muted, setMuted] = useState(true);
 
   const holdRef  = useRef(false);
   const videoRef = useRef(null);
@@ -53,6 +53,11 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     if (isPaused) video.pause();
     else video.play().catch(() => {});
   }, [isPaused]);
+
+  // Quando story muda, reseta estado de mudo
+  useEffect(() => {
+    setMuted(true); // sempre inicia mutado por política de autoplay
+  }, [story?.id]);
 
   // React não atualiza a prop `muted` no DOM corretamente — força via ref
   useEffect(() => {
@@ -366,15 +371,17 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
                   className="w-full h-full object-cover"
                   style={transform}
                 />
-                {/* Botão de áudio — canto inferior direito da mídia */}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
-                  className="absolute bottom-20 right-3 z-30 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
-                  title={muted ? 'Ativar áudio' : 'Mutar'}
-                >
-                  {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                </button>
+                {/* Botão de áudio — só aparece se o story não foi postado mudo */}
+                {!story.muteAudio && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+                    className="absolute bottom-20 right-3 z-30 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+                    title={muted ? 'Ativar áudio' : 'Mutar'}
+                  >
+                    {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                  </button>
+                )}
               </>
             ) : (
               <img

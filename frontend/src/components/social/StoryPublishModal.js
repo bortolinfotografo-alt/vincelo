@@ -365,7 +365,7 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
       const caption = hasMeta
         ? JSON.stringify({ texts: overlays, transform: { scale, panX: pan.x, panY: pan.y } })
         : null;
-      await onPublish(file, caption);
+      await onPublish(file, caption, videoMuted);
     } finally {
       setLoading(false);
     }
