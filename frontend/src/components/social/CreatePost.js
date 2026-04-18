@@ -319,12 +319,17 @@ export default function CreatePost({ onPostCreated, inModal = false }) {
               {/* Main preview — fills remaining height */}
               <div className="flex-1 min-h-0 relative bg-black overflow-hidden mt-2">
                 <div className="absolute inset-0 flex items-center justify-center">
-                  {currentPreview?.type === 'image' ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={currentPreview.url} alt="preview" className="max-w-full max-h-full object-contain" />
-                  ) : (
-                    <video src={currentPreview?.url} poster={thumbnailPreview || undefined} controls className="max-w-full max-h-full object-contain" />
-                  )}
+                  <div
+                    className="max-h-full max-w-full overflow-hidden"
+                    style={{ aspectRatio: currentRatio?.aspect ?? 1 }}
+                  >
+                    {currentPreview?.type === 'image' ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={currentPreview.url} alt="preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <video src={currentPreview?.url} poster={thumbnailPreview || undefined} controls className="w-full h-full object-cover" />
+                    )}
+                  </div>
                 </div>
                 {renderOverlays()}
               </div>
