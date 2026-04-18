@@ -466,7 +466,7 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
             }}
           >
             {isVideo ? (
-              <video ref={videoPreviewRef} src={previewUrl} autoPlay loop playsInline className="w-full h-full object-cover" />
+              <video ref={videoPreviewRef} src={previewUrl} autoPlay loop playsInline muted className="w-full h-full object-cover" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" draggable={false} />
@@ -477,11 +477,15 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
           {isVideo && (
             <button
               type="button"
-              onClick={() => setVideoMuted((m) => !m)}
-              className="absolute bottom-4 right-4 z-30 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+              onClick={() => {
+                const next = !videoMuted;
+                setVideoMuted(next);
+                if (videoPreviewRef.current) videoPreviewRef.current.muted = next;
+              }}
+              className="absolute top-4 right-4 z-30 bg-black/60 text-white rounded-full p-2.5 hover:bg-black/80 transition-colors"
               title={videoMuted ? 'Ativar áudio' : 'Mutar'}
             >
-              {videoMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              {videoMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
           )}
 
