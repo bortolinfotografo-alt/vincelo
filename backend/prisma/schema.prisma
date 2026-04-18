@@ -180,6 +180,7 @@ model ChatMessage {
   createdAt       DateTime   @default(now())
   mediaType       MediaType?
   mediaUrl        String?
+  mediaGroup      Json?
   storyPreviewUrl String?
   receiver        User       @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
   sender          User       @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)

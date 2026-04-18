@@ -11,50 +11,76 @@ const { parsePagination } = require('../utils/helpers');
  * POST /api/chat
  * Envia uma mensagem
  */
+const path = require('path');
+
+const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+const VIDEO_EXTS = new Set(['.mp4', '.mov', '.avi', '.webm']);
+
+function resolveMediaType(file) {
+  const mime = file.mimetype || '';
+  const ext  = path.extname(file.originalname || '').toLowerCase();
+  if (mime.startsWith('image') || IMAGE_EXTS.has(ext)) return 'PHOTO';
+  if (mime === 'application/pdf' || ext === '.pdf')     return 'DOCUMENT';
+  return 'VIDEO';
+}
+
 async function sendMessage(req, res) {
   const { receiverId, content, jobReference, storyPreviewUrl } = req.body;
-  const mediaUrl  = req.fileUrl || null;
-  const mediaType = req.file
-    ? (() => {
-        const mime = req.file.mimetype || '';
-        const ext  = require('path').extname(req.file.originalname || '').toLowerCase();
-        if (mime.startsWith('image') || ['.jpg','.jpeg','.png','.webp','.gif'].includes(ext)) return 'PHOTO';
-        if (mime === 'application/pdf' || ext === '.pdf') return 'DOCUMENT';
-        return 'VIDEO';
-      })()
-    : null;
 
-  // Precisa ter texto, mídia ou ser uma resposta a story
-  if ((!content || !content.trim()) && !mediaUrl && !storyPreviewUrl) {
-    return res.status(400).json({ message: 'Mensagem deve ter texto ou arquivo' });
-  }
-
-  if (!receiverId) {
-    return res.status(400).json({ message: 'Destinatario e obrigatorio' });
-  }
-
-  if (receiverId === req.user.id) {
-    return res.status(400).json({ message: 'Voce nao pode enviar mensagem para si mesmo' });
-  }
+  if (!receiverId) return res.status(400).json({ message: 'Destinatario e obrigatorio' });
+  if (receiverId === req.user.id) return res.status(400).json({ message: 'Voce nao pode enviar mensagem para si mesmo' });
 
   const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
-  if (!receiver) {
-    return res.status(404).json({ message: 'Destinatario nao encontrado' });
+  if (!receiver) return res.status(404).json({ message: 'Destinatario nao encontrado' });
+
+  // ── Mídia: grupo (múltiplos) ou único arquivo ──────────────────────────────
+  const uploadedFiles = req.files?.media || [];   // de upload.fields
+  const uploadedUrls  = req.fileUrls || [];        // URLs do Supabase (de createMultiUploadMiddleware)
+
+  let mediaUrl   = null;
+  let mediaType  = null;
+  let mediaGroup = null;
+
+  if (uploadedFiles.length > 1) {
+    // Galeria: salva como mediaGroup JSON
+    mediaGroup = uploadedUrls.map((url, i) => {
+      const file = uploadedFiles[i];
+      const ext  = path.extname(file?.originalname || '').toLowerCase();
+      const mime = file?.mimetype || '';
+      const type = (mime.startsWith('image') || IMAGE_EXTS.has(ext)) ? 'image' : 'video';
+      return { type, url };
+    });
+  } else if (uploadedFiles.length === 1) {
+    // Arquivo único — comportamento legado
+    mediaUrl  = uploadedUrls[0] || null;
+    mediaType = resolveMediaType(uploadedFiles[0]);
+  }
+
+  if (!content?.trim() && !mediaUrl && !mediaGroup && !storyPreviewUrl) {
+    return res.status(400).json({ message: 'Mensagem deve ter texto ou arquivo' });
   }
 
   const message = await prisma.chatMessage.create({
     data: {
       senderId: req.user.id,
       receiverId,
-      content: content?.trim() || null,
+      content:        content?.trim() || null,
       mediaUrl,
       mediaType,
+      mediaGroup,
       storyPreviewUrl: storyPreviewUrl || null,
-      jobReference: jobReference || null,
+      jobReference:    jobReference    || null,
     },
     include: {
       sender: { select: { id: true, name: true, avatar: true } },
     },
+  });
+
+  logger.info('[CHAT] Mensagem enviada', {
+    senderId: req.user.id,
+    receiverId,
+    hasMedia: !!(mediaUrl || mediaGroup),
+    groupSize: mediaGroup?.length ?? 0,
   });
 
   return res.status(201).json({ message });
@@ -155,7 +181,7 @@ async function listConversations(req, res) {
     if (!conversationMap.has(key)) {
       conversationMap.set(key, {
         user: otherUser,
-        lastMessage: msg.content || (msg.mediaUrl ? '[Arquivo]' : ''),
+        lastMessage: msg.content || (msg.mediaGroup ? `[Galeria · ${msg.mediaGroup.length} itens]` : msg.mediaUrl ? '[Arquivo]' : ''),
         lastMessageAt: msg.createdAt,
         unreadCount: 0,
       });
