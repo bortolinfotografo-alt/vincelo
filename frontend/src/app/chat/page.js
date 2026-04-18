@@ -12,6 +12,7 @@ import { useAuth } from '@/app/auth-context';
 import api from '@/lib/api';
 import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText, ChevronLeft } from 'lucide-react';
 import EmojiButton from '@/components/ui/EmojiButton';
+import toast from 'react-hot-toast';
 
 const POLLING_INTERVAL = 5000;
 const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutos
@@ -260,13 +261,22 @@ function ChatContent() {
       if (content) data.append('content', content);
       if (fileToSend) data.append('media', fileToSend);
 
-      await api.post('/chat', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // Não define Content-Type manualmente — axios detecta FormData e inclui o boundary automaticamente
+      await api.post('/chat', data);
       fetchMessages(selectedUser.id);
       fetchConversations();
-    } catch {
+    } catch (err) {
       // Restaura em caso de erro
       setNewMessage(content);
-      if (fileToSend) setAttachFile(fileToSend);
+      if (fileToSend) {
+        setAttachFile(fileToSend);
+        // Restaura o preview também
+        const ext = fileToSend.name.split('.').pop().toLowerCase();
+        const isImg = fileToSend.type.startsWith('image/') || ['jpg','jpeg','png','webp','gif'].includes(ext);
+        const isVid = fileToSend.type.startsWith('video/') || ['mp4','mov','avi','webm'].includes(ext);
+        if (isImg || isVid) setAttachPreview(URL.createObjectURL(fileToSend));
+      }
+      toast.error('Erro ao enviar arquivo');
     } finally {
       setSending(false);
     }
