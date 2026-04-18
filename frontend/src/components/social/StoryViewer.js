@@ -54,9 +54,9 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
     else video.play().catch(() => {});
   }, [isPaused]);
 
-  // Quando story muda, reseta estado de mudo
+  // Se o story foi publicado como mudo, força mudo; caso contrário mantém preferência do usuário
   useEffect(() => {
-    setMuted(true); // sempre inicia mutado por política de autoplay
+    if (story?.muteAudio) setMuted(true);
   }, [story?.id]);
 
   // React não atualiza a prop `muted` no DOM corretamente — força via ref
