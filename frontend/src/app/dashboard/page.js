@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
@@ -13,7 +13,7 @@ import { Camera, Briefcase, Clock, Star, Users, CheckCircle, XCircle, AlertCircl
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -56,6 +56,14 @@ export default function DashboardPage() {
   }
 
   return <CompanyDashboard dashboard={dashboard} />;
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20">Carregando...</div>}>
+      <DashboardContent />
+    </Suspense>
+  );
 }
 
 function FreelancerDashboard({ dashboard }) {
