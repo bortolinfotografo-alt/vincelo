@@ -6,15 +6,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/app/auth-context';
 import { Camera, Briefcase, Clock, Star, Users, CheckCircle, XCircle, AlertCircle, DollarSign, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,6 +25,18 @@ export default function DashboardPage() {
       router.push('/auth/login');
     }
   }, [user, authLoading, router]);
+
+  // Toast de retorno do Stripe Checkout
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (status === 'success') {
+      toast.success('Assinatura ativada com sucesso! Bem-vindo ao Vincelo Pro.');
+      router.replace('/dashboard');
+    } else if (status === 'cancelled') {
+      toast('Pagamento cancelado.', { icon: '↩' });
+      router.replace('/dashboard');
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (user) {
