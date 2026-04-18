@@ -540,51 +540,88 @@ function ChatContent() {
                     </p>
                   ) : (
                     messages.map((msg) => {
-                      const isMine    = msg.senderId === user.id;
-                      const isPdfUrl  = msg.mediaUrl?.toLowerCase().endsWith('.pdf');
-                      const group     = msg.mediaGroup ? (Array.isArray(msg.mediaGroup) ? msg.mediaGroup : JSON.parse(msg.mediaGroup)) : null;
-                      const hasMedia  = group || msg.mediaUrl;
-                      const noPadding = group && !msg.content; // grade sem padding interno
+                      const isMine   = msg.senderId === user.id;
+                      const isPdfUrl = msg.mediaUrl?.toLowerCase().endsWith('.pdf');
+                      const group    = msg.mediaGroup
+                        ? (Array.isArray(msg.mediaGroup) ? msg.mediaGroup : JSON.parse(msg.mediaGroup))
+                        : null;
+                      const hasVisualMedia = (group || (msg.mediaUrl && !isPdfUrl));
+                      const hasText        = !!msg.content;
+                      const hasPdf         = isPdfUrl && msg.mediaUrl;
+                      const timestamp      = new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                      const alignCls       = isMine ? 'items-end' : 'items-start';
+                      const bubbleCls      = isMine
+                        ? 'bg-primary-500 text-white rounded-br-sm'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-sm';
+                      const timeCls        = isMine ? 'text-primary-200 text-right' : 'text-gray-400';
 
                       return (
                         <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[75%] rounded-2xl overflow-hidden ${
-                            noPadding ? '' : 'px-4 py-2.5'
-                          } ${isMine
-                            ? 'bg-primary-500 text-white rounded-br-sm'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-sm'
-                          }`}>
+                          <div className={`flex flex-col gap-1 max-w-[75%] ${alignCls}`}>
+
                             <StoryReplyThumb previewUrl={msg.storyPreviewUrl} />
 
-                            {/* Galeria (media_group) */}
-                            {group && (
-                              <MediaGroup
-                                items={group}
-                                onOpen={(i) => setLightbox({ items: group, index: i })}
-                              />
+                            {/* ── Mídia visual (sem balão colorido) ── */}
+                            {hasVisualMedia && (
+                              <div className="relative">
+                                {group ? (
+                                  <MediaGroup
+                                    items={group}
+                                    onOpen={(i) => setLightbox({ items: group, index: i })}
+                                  />
+                                ) : (
+                                  <MessageMedia
+                                    mediaUrl={msg.mediaUrl}
+                                    mediaType={msg.mediaType}
+                                    isPdf={false}
+                                    onOpenImage={(items, idx) => setLightbox({ items, index: idx })}
+                                  />
+                                )}
+
+                                {/* Timestamp sobre a mídia quando não há texto */}
+                                {!hasText && !hasPdf && (
+                                  <div className={`absolute bottom-1.5 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white backdrop-blur-sm`}>
+                                    {timestamp}
+                                    {isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}
+                                  </div>
+                                )}
+                              </div>
                             )}
 
-                            {/* Arquivo único (legado) */}
-                            {!group && (
-                              <MessageMedia
-                                mediaUrl={msg.mediaUrl}
-                                mediaType={msg.mediaType}
-                                isPdf={isPdfUrl}
-                                onOpenImage={(items, idx) => setLightbox({ items, index: idx })}
-                              />
+                            {/* ── PDF como item de balão ── */}
+                            {hasPdf && (
+                              <div className={`rounded-2xl px-4 py-2.5 ${bubbleCls}`}>
+                                <MessageMedia
+                                  mediaUrl={msg.mediaUrl}
+                                  mediaType={msg.mediaType}
+                                  isPdf={true}
+                                  onOpenImage={() => {}}
+                                />
+                                <p className={`text-[10px] mt-1 ${timeCls}`}>
+                                  {timestamp}
+                                  {isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}
+                                </p>
+                              </div>
                             )}
 
-                            {/* Texto (pode aparecer junto com mídia) */}
-                            {msg.content && (
-                              <p className={`text-sm whitespace-pre-wrap break-words ${hasMedia ? 'mt-1 px-0' : ''}`}>
-                                {msg.content}
-                              </p>
+                            {/* ── Balão de texto (separado da mídia) ── */}
+                            {hasText && (
+                              <div className={`rounded-2xl px-4 py-2.5 ${bubbleCls}`}>
+                                <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                                <p className={`text-[10px] mt-0.5 ${timeCls}`}>
+                                  {timestamp}
+                                  {isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}
+                                </p>
+                              </div>
                             )}
 
-                            <p className={`text-[10px] mt-1 ${noPadding ? 'px-2 pb-1' : ''} ${isMine ? 'text-primary-200 text-right' : 'text-gray-400'}`}>
-                              {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                              {isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}
-                            </p>
+                            {/* ── Só texto puro (sem mídia) ── */}
+                            {!hasVisualMedia && !hasPdf && !hasText && (
+                              <div className={`rounded-2xl px-4 py-2.5 ${bubbleCls}`}>
+                                <p className={`text-[10px] ${timeCls}`}>{timestamp}</p>
+                              </div>
+                            )}
+
                           </div>
                         </div>
                       );
