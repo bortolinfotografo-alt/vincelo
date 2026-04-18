@@ -10,7 +10,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/auth-context';
 import api from '@/lib/api';
-import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText, ChevronLeft } from 'lucide-react';
+import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText, ChevronLeft, Download, ZoomIn } from 'lucide-react';
 import EmojiButton from '@/components/ui/EmojiButton';
 import toast from 'react-hot-toast';
 
@@ -60,8 +60,53 @@ function StoryReplyThumb({ previewUrl }) {
   );
 }
 
+// ── Lightbox para visualizar imagem em tela cheia ─────────────
+function ImageLightbox({ src, onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90"
+      onClick={onClose}
+    >
+      {/* Barra superior */}
+      <div
+        className="absolute top-0 left-0 right-0 flex items-center justify-end gap-2 p-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <a
+          href={src}
+          download
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Download size={15} /> Baixar
+        </a>
+        <button
+          onClick={onClose}
+          className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* Imagem */}
+      <img
+        src={src}
+        alt="Visualização"
+        className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
 // ── Renderiza mídia dentro de uma bolha ───────────────────────
-function MessageMedia({ mediaUrl, mediaType, isPdf }) {
+function MessageMedia({ mediaUrl, mediaType, isPdf, onOpenImage }) {
   if (!mediaUrl) return null;
   if (isPdf) {
     return (
@@ -86,13 +131,20 @@ function MessageMedia({ mediaUrl, mediaType, isPdf }) {
     );
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={mediaUrl}
-      alt="Anexo"
-      className="mt-1 rounded-xl max-w-full max-h-48 object-cover cursor-pointer"
-      onClick={() => window.open(mediaUrl, '_blank')}
-    />
+    <div className="relative mt-1 group">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={mediaUrl}
+        alt="Anexo"
+        className="rounded-xl max-w-full max-h-48 object-cover cursor-pointer"
+        onClick={() => onOpenImage?.(mediaUrl)}
+      />
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <div className="bg-black/50 rounded-full p-2">
+          <ZoomIn size={18} className="text-white" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -108,6 +160,7 @@ function ChatContent() {
   const [loadingThread, setLoadingThread] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [lightboxSrc, setLightboxSrc] = useState(null);
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
@@ -302,6 +355,7 @@ function ChatContent() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
       <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Mensagens</h1>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden dark:bg-gray-900 dark:border-gray-800">
@@ -448,6 +502,7 @@ function ChatContent() {
                               mediaUrl={msg.mediaUrl}
                               mediaType={msg.mediaType}
                               isPdf={isPdfUrl}
+                              onOpenImage={setLightboxSrc}
                             />
                             <p className={`text-[10px] mt-1 ${isMine ? 'text-primary-200 text-right' : 'text-gray-400'}`}>
                               {new Date(msg.createdAt).toLocaleTimeString('pt-BR', {
