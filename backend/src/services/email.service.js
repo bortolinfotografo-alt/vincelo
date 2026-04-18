@@ -7,11 +7,11 @@ const nodemailer = require('nodemailer');
 
 function getTransporter() {
   return nodemailer.createTransport({
-    host: process.env.MAIL_HOST,
-    port: process.env.MAIL_PORT || 587,
-    secure: process.env.MAIL_SECURE === 'true',
+    host: process.env.MAIL_HOST || 'smtp.resend.com',
+    port: Number(process.env.MAIL_PORT) || 465,
+    secure: process.env.MAIL_SECURE !== 'false', // true por padrão (465)
     auth: {
-      user: process.env.MAIL_USER,
+      user: process.env.MAIL_USER || 'resend',
       pass: process.env.MAIL_PASS,
     },
   });
@@ -37,22 +37,25 @@ async function sendPasswordReset(email, resetToken) {
 
   const transporter = getTransporter();
 
+  const fromName = process.env.MAIL_FROM_NAME || 'Vincelo';
+  const fromEmail = process.env.MAIL_FROM_EMAIL || 'onboarding@resend.dev';
+
   await transporter.sendMail({
-    from: `"${process.env.MAIL_FROM || 'App Freela'}" <${process.env.MAIL_USER || ''}>`,
+    from: `"${fromName}" <${fromEmail}>`,
     to: email,
-    subject: 'Recuperacao de Senha - App Freela',
+    subject: 'Recuperação de Senha — Vincelo',
     html: `
-      <h2>Recuperacao de Senha</h2>
-      <p>Voce solicitou a recuperacao de senha. Use o link abaixo para criar uma nova senha:</p>
-      <p><a href="${resetUrl}" style="background:#6366f1;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Redefinir Senha</a></p>
-      <p>Ou copie e cole este link no navegador:</p>
-      <p>${resetUrl}</p>
-      <hr/>
-      <p><strong>Token (para uso manual):</strong> <code>${resetToken}</code></p>
-      <p>Este link/token expira em 1 hora.</p>
-      <p>Se voce nao solicitou isso, ignore este email.</p>
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;">
+        <h2 style="color:#f97316;margin-bottom:8px;">Vincelo</h2>
+        <h3 style="color:#111;margin-top:0;">Recuperação de Senha</h3>
+        <p style="color:#444;">Você solicitou a redefinição de senha. Clique no botão abaixo para criar uma nova senha:</p>
+        <a href="${resetUrl}" style="display:inline-block;margin:16px 0;padding:12px 28px;background:#f97316;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Redefinir Senha</a>
+        <p style="color:#888;font-size:13px;">Ou copie e cole este link no navegador:<br/><span style="color:#555;">${resetUrl}</span></p>
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0;"/>
+        <p style="color:#aaa;font-size:12px;">Este link expira em 1 hora. Se você não solicitou isso, ignore este email.</p>
+      </div>
     `,
-    text: `Recuperacao de Senha\n\nAcesse o link abaixo para redefinir sua senha:\n\n${resetUrl}\n\nToken: ${resetToken}\n\nEste link expira em 1 hora. Se voce nao solicitou isso, ignore este email.`,
+    text: `Recuperação de Senha — Vincelo\n\nAcesse o link abaixo para redefinir sua senha:\n\n${resetUrl}\n\nEste link expira em 1 hora. Se você não solicitou isso, ignore este email.`,
   });
 }
 

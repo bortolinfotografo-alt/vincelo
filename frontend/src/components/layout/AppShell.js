@@ -18,27 +18,38 @@ const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/forgot-password'];
 // ── Modal de criar post ───────────────────────────────────────
 function CreatePostModal({ onClose }) {
   useEffect(() => {
+    document.body.style.overflow = 'hidden';
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', handler);
+    };
   }, [onClose]);
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white font-semibold text-lg">Novo Post</h2>
+      <div
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden bg-white dark:bg-gray-900 rounded-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Novo Post</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
           >
             <X size={20} />
           </button>
         </div>
-        <CreatePost onPostCreated={onClose} />
+        {/* Body — CreatePost fills remaining height */}
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <CreatePost onPostCreated={onClose} inModal />
+        </div>
       </div>
     </div>
   );

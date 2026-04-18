@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Eye, BadgeCheck, Pause, Play, Heart, Share2, Send, Trash2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Eye, BadgeCheck, Pause, Play, Heart, Share2, Send, Trash2, Volume2, VolumeX } from 'lucide-react';
 import StoryProgressBar from './StoryProgressBar';
 import { buildTextStyle } from './StoryPublishModal';
 import api from '@/lib/api';
@@ -29,6 +29,8 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
   const [replyText, setReplyText]       = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
   const [replyFocused, setReplyFocused] = useState(false);
+
+  const [muted, setMuted] = useState(true); // inicia mutado por política de autoplay; usuário pode ativar
 
   const holdRef  = useRef(false);
   const videoRef = useRef(null);
@@ -348,16 +350,27 @@ export default function StoryViewer({ groups, startGroupIndex = 0, onClose }) {
             } catch { /* sem transform */ }
 
             return story.mediaType === 'VIDEO' ? (
-              <video
-                key={story.id}
-                ref={videoRef}
-                src={story.mediaUrl}
-                autoPlay
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-                style={transform}
-              />
+              <>
+                <video
+                  key={story.id}
+                  ref={videoRef}
+                  src={story.mediaUrl}
+                  autoPlay
+                  muted={muted}
+                  playsInline
+                  className="w-full h-full object-cover"
+                  style={transform}
+                />
+                {/* Botão de áudio — canto inferior direito da mídia */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+                  className="absolute bottom-20 right-3 z-30 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+                  title={muted ? 'Ativar áudio' : 'Mutar'}
+                >
+                  {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                </button>
+              </>
             ) : (
               <img
                 key={story.id}

@@ -18,7 +18,7 @@ const registerSchema = z.object({
     .trim(),
   password: z
     .string({ required_error: 'Senha é obrigatória' })
-    .min(6, 'Senha deve ter pelo menos 6 caracteres')
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
     .max(128, 'Senha muito longa'),
   role: z.enum(['FREELANCER', 'COMPANY'], {
     errorMap: () => ({ message: 'Role deve ser FREELANCER ou COMPANY' }),
@@ -59,7 +59,7 @@ const resetPasswordSchema = z.object({
   resetToken: z.string({ required_error: 'Token é obrigatório' }).min(1),
   newPassword: z
     .string({ required_error: 'Nova senha é obrigatória' })
-    .min(6, 'A nova senha deve ter pelo menos 6 caracteres')
+    .min(8, 'A nova senha deve ter pelo menos 8 caracteres')
     .max(128),
 });
 

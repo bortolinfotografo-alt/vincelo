@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MoreHorizontal, Bookmark, BookmarkCheck, BadgeCheck, Trash2, ExternalLink, Share2, Zap, Pencil } from 'lucide-react';
@@ -55,6 +55,7 @@ function PostDescription({ text, authorId, authorName }) {
 export default function PostCard({ post, onDelete }) {
   const { user: currentUser } = useAuth();
   const router = useRouter();
+  const likeRef = useRef(null);
   const [saved, setSaved] = useState(post.isSaved || false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -165,13 +166,13 @@ export default function PostCard({ post, onDelete }) {
       </div>
 
       {/* Mídia — carrossel suporta 1 ou N itens */}
-      <MediaCarousel post={post} />
+      <MediaCarousel post={post} onDoubleLike={() => likeRef.current?.likeIfNotLiked()} />
 
       {/* Ações e descrição */}
       <div className="px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <LikeButton postId={post.id} initialLiked={post.isLiked} initialCount={post.likeCount} />
+            <LikeButton ref={likeRef} postId={post.id} initialLiked={post.isLiked} initialCount={post.likeCount} />
             <CommentSection postId={post.id} initialCount={post.commentCount} />
             <button
               onClick={() => setShareOpen(true)}

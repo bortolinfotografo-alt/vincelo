@@ -6,6 +6,7 @@
 const { prisma } = require('../services/db');
 const logger = require('../utils/logger');
 const { createNotification, deleteNotification } = require('./notification.controller');
+const { parsePagination } = require('../utils/helpers');
 
 /**
  * POST /api/follow/:userId
@@ -90,16 +91,15 @@ async function getFollowStatus(req, res) {
  */
 async function getFollowers(req, res) {
   const { userId } = req.params;
-  const { page = 1, limit = 20 } = req.query;
+  const { page, limit, skip } = parsePagination(req.query);
   const currentUserId = req.user?.id || null;
-  const skip = (Number(page) - 1) * Number(limit);
 
   const [follows, total] = await Promise.all([
     prisma.follow.findMany({
       where: { followingId: userId },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: Number(limit),
+      take: limit,
       include: {
         follower: {
           select: {
@@ -133,8 +133,8 @@ async function getFollowers(req, res) {
       ...f.follower,
       isFollowing: followingSet.has(f.follower.id),
     })),
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    totalPages: Math.ceil(total / limit),
     total,
   });
 }
@@ -145,15 +145,14 @@ async function getFollowers(req, res) {
  */
 async function getFollowing(req, res) {
   const { userId } = req.params;
-  const { page = 1, limit = 20 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
+  const { page, limit, skip } = parsePagination(req.query);
 
   const [follows, total] = await Promise.all([
     prisma.follow.findMany({
       where: { followerId: userId },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: Number(limit),
+      take: limit,
       include: {
         following: {
           select: {
@@ -173,8 +172,8 @@ async function getFollowing(req, res) {
 
   return res.json({
     users: follows.map((f) => f.following),
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit)),
+    page,
+    totalPages: Math.ceil(total / limit),
     total,
   });
 }

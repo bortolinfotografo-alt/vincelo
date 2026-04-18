@@ -10,17 +10,26 @@
 // ============================================================
 
 /**
- * Remove tags HTML de uma string.
+ * Remove tags HTML e vetores XSS de uma string.
  * @param {string} input
  * @returns {string}
  */
 function stripHtml(input) {
   if (typeof input !== 'string') return input;
   return input
-    // Remove tags HTML completas
+    // Remove null bytes
+    .replace(/\0/g, '')
+    // Decodifica entidades numéricas decimais (&#60; → <) antes de strippear
+    .replace(/&#(\d+);?/g, (_, dec) => String.fromCharCode(Number(dec)))
+    // Decodifica entidades numéricas hexadecimais (&#x3C; → <)
+    .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // Remove tags HTML completas (incluindo SVG/MathML com eventos)
     .replace(/<[^>]*>/g, '')
-    // Remove entidades HTML perigosas remanescentes
-    .replace(/javascript:/gi, '')
+    // Remove protocolos perigosos
+    .replace(/javascript\s*:/gi, '')
+    .replace(/vbscript\s*:/gi, '')
+    .replace(/data\s*:/gi, '')
+    // Remove handlers de eventos inline
     .replace(/on\w+\s*=/gi, '')
     .trim();
 }

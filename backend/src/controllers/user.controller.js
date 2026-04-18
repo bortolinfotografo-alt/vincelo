@@ -270,6 +270,16 @@ async function updateProfile(req, res) {
 
   if (updatedUser.role === 'FREELANCER' && profileData) {
     const parsedData = typeof profileData === 'string' ? JSON.parse(profileData) : profileData;
+
+    // Valida localização: apenas letras, espaços, vírgulas, hifens e acentos
+    if (parsedData.location !== undefined) {
+      const loc = String(parsedData.location).trim();
+      const invalidChars = /[@\d#$%^&*()+=[\]{};:"\\|<>?/!]/;
+      if (loc && (invalidChars.test(loc) || loc.length > 100)) {
+        return res.status(400).json({ message: 'Localização inválida. Use apenas o nome de uma cidade.' });
+      }
+    }
+
     await prisma.freelancerProfile.update({
       where: { userId: req.user.id },
       data: {

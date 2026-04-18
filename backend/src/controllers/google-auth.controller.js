@@ -3,10 +3,29 @@
 // Login e cadastro com Google OAuth 2.0
 // ============================================================
 
+const crypto = require('crypto');
 const passport = require('passport');
 const { prisma } = require('../services/db');
 const { generateToken, generateRefreshToken } = require('../services/auth.service');
 const logger = require('../utils/logger');
+
+// Códigos de troca temporários: code → { token, userId, expiresAt }
+// Válidos por 60 segundos — evita JWT na URL (histórico do navegador)
+const exchangeCodes = new Map();
+
+function createExchangeCode(token, userId) {
+  const code = crypto.randomBytes(32).toString('hex');
+  exchangeCodes.set(code, { token, userId, expiresAt: Date.now() + 60_000 });
+  return code;
+}
+
+function consumeExchangeCode(code) {
+  const entry = exchangeCodes.get(code);
+  if (!entry) return null;
+  exchangeCodes.delete(code);
+  if (Date.now() > entry.expiresAt) return null;
+  return entry;
+}
 
 // Middleware para iniciar o processo de autenticação com Google
 function googleAuth(req, res, next) {
@@ -40,9 +59,10 @@ function googleAuthCallback(req, res, next) {
 
     res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
 
-    // Redireciona para o frontend com o token de acesso
+    // Redireciona com código temporário — o JWT não vai na URL
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}&userId=${user.id}`);
+    const code = createExchangeCode(token, user.id);
+    res.redirect(`${frontendUrl}/auth/callback?code=${code}`);
   })(req, res, next);
 }
 
@@ -80,8 +100,23 @@ async function getCurrentUser(req, res) {
   }
 }
 
+/**
+ * GET /api/google-auth/exchange?code=xxx
+ * Troca o código temporário pelo JWT de acesso (uso único, expira em 60s)
+ */
+function exchangeToken(req, res) {
+  const { code } = req.query;
+  if (!code) return res.status(400).json({ message: 'Código ausente' });
+
+  const entry = consumeExchangeCode(code);
+  if (!entry) return res.status(401).json({ message: 'Código inválido ou expirado' });
+
+  return res.json({ token: entry.token, userId: entry.userId });
+}
+
 module.exports = {
   googleAuth,
   googleAuthCallback,
   getCurrentUser,
+  exchangeToken,
 };

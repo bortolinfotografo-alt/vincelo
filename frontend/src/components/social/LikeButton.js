@@ -1,22 +1,24 @@
 'use client';
 
-// Botao de curtida com animacao de coracao
-import { useState } from 'react';
+import { useState, forwardRef, useImperativeHandle } from 'react';
 import { Heart } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
-export default function LikeButton({ postId, initialLiked = false, initialCount = 0 }) {
-  const [liked, setLiked] = useState(initialLiked);
-  const [count, setCount] = useState(initialCount);
+const LikeButton = forwardRef(function LikeButton(
+  { postId, initialLiked = false, initialCount = 0 },
+  ref
+) {
+  const [liked, setLiked]     = useState(initialLiked);
+  const [count, setCount]     = useState(initialCount);
   const [loading, setLoading] = useState(false);
   const [animate, setAnimate] = useState(false);
 
-  const handleToggle = async () => {
+  const doToggle = async (onlyLike = false) => {
     if (loading) return;
+    if (onlyLike && liked) return; // double-click nunca descurte
     setLoading(true);
 
-    // Optimistic update
     const newLiked = !liked;
     setLiked(newLiked);
     setCount((c) => c + (newLiked ? 1 : -1));
@@ -29,8 +31,7 @@ export default function LikeButton({ postId, initialLiked = false, initialCount 
       const res = await api.post(`/posts/${postId}/like`);
       setLiked(res.data.liked);
       setCount(res.data.likeCount);
-    } catch (err) {
-      // Reverte em caso de erro
+    } catch {
       setLiked(!newLiked);
       setCount((c) => c + (newLiked ? -1 : 1));
       toast.error('Erro ao curtir');
@@ -39,9 +40,14 @@ export default function LikeButton({ postId, initialLiked = false, initialCount 
     }
   };
 
+  // Expõe método para o PostCard acionar via ref (double-click)
+  useImperativeHandle(ref, () => ({
+    likeIfNotLiked: () => doToggle(true),
+  }));
+
   return (
     <button
-      onClick={handleToggle}
+      onClick={() => doToggle(false)}
       className={`flex items-center gap-1.5 text-sm transition-all ${
         liked ? 'text-red-500' : 'text-gray-500 hover:text-red-400 dark:text-gray-400'
       }`}
@@ -54,4 +60,6 @@ export default function LikeButton({ postId, initialLiked = false, initialCount 
       <span>{count > 0 ? count : ''}</span>
     </button>
   );
-}
+});
+
+export default LikeButton;

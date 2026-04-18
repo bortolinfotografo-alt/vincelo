@@ -8,7 +8,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Volume2, VolumeX, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Volume2, VolumeX, Play, Pause, Heart } from 'lucide-react';
 
 // ── Vídeo com autoplay por IntersectionObserver ───────────────
 export function AutoplayVideo({ src, poster, className }) {
@@ -129,9 +129,17 @@ function getAspectClass(aspectRatio) {
 }
 
 // ── Carrossel principal ───────────────────────────────────────
-export default function MediaCarousel({ post }) {
-  const [index, setIndex] = useState(0);
+export default function MediaCarousel({ post, onDoubleLike }) {
+  const [index, setIndex]       = useState(0);
+  const [heartAnim, setHeartAnim] = useState(false);
   const touchStartX = useRef(null);
+
+  const handleDoubleClick = (e) => {
+    e.preventDefault();
+    setHeartAnim(true);
+    setTimeout(() => setHeartAnim(false), 700);
+    onDoubleLike?.();
+  };
 
   // Normaliza: usa post.media[] se disponível, senão cria item único a partir de mediaUrl
   const items =
@@ -165,6 +173,7 @@ export default function MediaCarousel({ post }) {
       className={wrapperClass}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onDoubleClick={handleDoubleClick}
     >
       <div className={`${innerClass} ${innerAspect} relative`}>
         {current.mediaType === 'VIDEO' ? (
@@ -178,6 +187,14 @@ export default function MediaCarousel({ post }) {
             alt={post.description || 'Post'}
             className="w-full h-full object-cover"
           />
+        )}
+
+        {/* Heart animation overlay — duplo clique */}
+        {heartAnim && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <style>{`@keyframes heartPop{0%{transform:scale(0);opacity:0.9}40%{transform:scale(1.3);opacity:1}70%{transform:scale(1.1);opacity:1}100%{transform:scale(1.3);opacity:0}}`}</style>
+            <Heart size={80} fill="#ef4444" className="text-red-500 drop-shadow-2xl" style={{ animation: 'heartPop 0.65s ease-out forwards' }} />
+          </div>
         )}
 
         {/* Setas de navegação */}

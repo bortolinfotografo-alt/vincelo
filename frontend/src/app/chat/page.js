@@ -68,13 +68,13 @@ function ReplyQuote({ replyTo, isMine }) {
 }
 
 // ── Miniatura do story respondido ────────────────────────────
-function StoryReplyThumb({ previewUrl }) {
+function StoryReplyThumb({ previewUrl, onOpen }) {
   if (!previewUrl) return null;
   const isVideo = /\.(mp4|mov|avi|webm)(\?|$)/i.test(previewUrl);
   return (
     <button
       type="button"
-      onClick={() => window.open(previewUrl, '_blank')}
+      onClick={onOpen}
       className="block mb-1.5 relative group w-full text-left"
       title="Ver story"
     >
@@ -108,7 +108,26 @@ function fileIsVideo(file) {
 function ImageLightbox({ items, startIndex = 0, onClose }) {
   const [idx, setIdx] = useState(startIndex);
   const [downloading, setDownloading] = useState(false);
+  const touchStartX = useRef(null);
   const current = items[idx];
+
+  // Trava o scroll do fundo enquanto o viewer está aberto
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  // Swipe mobile
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) setIdx((i) => Math.min(i + 1, items.length - 1));
+      else           setIdx((i) => Math.max(i - 1, 0));
+    }
+    touchStartX.current = null;
+  };
 
   const handleDownload = async (e) => {
     e.stopPropagation();
@@ -145,7 +164,7 @@ function ImageLightbox({ items, startIndex = 0, onClose }) {
   }, [onClose, items.length]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/92" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/92" onClick={onClose} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {/* Barra topo */}
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10" onClick={(e) => e.stopPropagation()}>
         <span className="text-white/60 text-sm">{items.length > 1 ? `${idx + 1} / ${items.length}` : ''}</span>
@@ -258,7 +277,16 @@ function MessageMedia({ mediaUrl, mediaType, isPdf, onOpenImage }) {
     );
   }
   if (mediaType === 'VIDEO') {
-    return <video src={mediaUrl} controls className="mt-1 rounded-xl max-w-full max-h-48 object-cover" />;
+    return (
+      <div className="relative mt-1 group cursor-pointer" onClick={() => onOpenImage?.([{ type: 'video', url: mediaUrl }], 0)}>
+        <video src={mediaUrl} className="rounded-xl max-w-full max-h-48 object-cover pointer-events-none" muted playsInline />
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/25">
+          <div className="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center shadow-lg">
+            <span className="text-gray-800 text-sm ml-0.5">▶</span>
+          </div>
+        </div>
+      </div>
+    );
   }
   return (
     <div className="relative mt-1 group">
@@ -635,7 +663,14 @@ function ChatContent() {
                           )}
 
                           <div className={`flex flex-col gap-1 max-w-[75%] ${alignCls}`}>
-                            <StoryReplyThumb previewUrl={msg.storyPreviewUrl} />
+                            <StoryReplyThumb
+                              previewUrl={msg.storyPreviewUrl}
+                              onOpen={() => {
+                                if (!msg.storyPreviewUrl) return;
+                                const isVid = /\.(mp4|mov|avi|webm)(\?|$)/i.test(msg.storyPreviewUrl);
+                                setLightbox({ items: [{ type: isVid ? 'video' : 'image', url: msg.storyPreviewUrl }], index: 0 });
+                              }}
+                            />
 
                             {/* ── Mídia visual (sem balão colorido) ── */}
                             {hasVisualMedia && (

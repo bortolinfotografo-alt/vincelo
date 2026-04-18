@@ -43,8 +43,11 @@ function corsConfig() {
 
   return cors({
     origin: function (origin, callback) {
-      // Permite requests sem origem (mobile apps, curl, etc)
-      if (!origin) return callback(null, true);
+      // Em produção, rejeita requests sem origem (CSRF via curl/servidor sem browser)
+      if (!origin) {
+        if (isDevelopment) return callback(null, true);
+        return callback(new Error('Origem ausente nao permitida'));
+      }
 
       if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
         return callback(null, true);

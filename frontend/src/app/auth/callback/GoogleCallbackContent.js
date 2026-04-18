@@ -11,23 +11,28 @@ export default function GoogleCallbackContent() {
   const { setToken } = useAuth();
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const userId = searchParams.get('userId');
+    const code = searchParams.get('code');
+    const error = searchParams.get('error');
 
-    if (token) {
-      // Armazena o token no contexto de autenticação
-      setToken(token);
-
-      // Mostra mensagem de sucesso
-      toast.success('Login com Google realizado com sucesso!');
-
-      // Redireciona para o feed
-      router.push('/feed');
-    } else {
-      // Se não houver token, redireciona para login com erro
+    if (error || !code) {
       toast.error('Falha no login com Google');
       router.push('/auth/login?error=google_auth_failed');
+      return;
     }
+
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    fetch(`${apiBase}/api/google-auth/exchange?code=${encodeURIComponent(code)}`, { credentials: 'include' })
+      .then((res) => res.json())
+      .then(({ token }) => {
+        if (!token) throw new Error('sem token');
+        setToken(token);
+        toast.success('Login com Google realizado com sucesso!');
+        router.push('/feed');
+      })
+      .catch(() => {
+        toast.error('Falha no login com Google');
+        router.push('/auth/login?error=google_auth_failed');
+      });
   }, [searchParams, setToken, router]);
 
   return (
