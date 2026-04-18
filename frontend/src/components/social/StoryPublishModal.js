@@ -129,8 +129,8 @@ export default function StoryPublishModal({ file, onPublish, onCancel }) {
     typeof window !== 'undefined' ? URL.createObjectURL(file) : ''
   ).current;
 
-  // Áudio do vídeo preview
-  const [videoMuted, setVideoMuted] = useState(false);
+  // Áudio do vídeo preview — inicia mutado (política de autoplay do browser)
+  const [videoMuted, setVideoMuted] = useState(true);
   const videoPreviewRef = useRef(null);
   useEffect(() => {
     if (videoPreviewRef.current) videoPreviewRef.current.muted = videoMuted;
