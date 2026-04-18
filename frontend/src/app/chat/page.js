@@ -10,7 +10,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/auth-context';
 import api from '@/lib/api';
-import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText, ChevronLeft, Download, ZoomIn } from 'lucide-react';
+import { Send, MessageCircle, Search, X, Loader2, Paperclip, FileText, ChevronLeft, Download, ZoomIn, CornerUpLeft } from 'lucide-react';
 import EmojiButton from '@/components/ui/EmojiButton';
 import toast from 'react-hot-toast';
 
@@ -33,6 +33,37 @@ function OnlineBadge({ lastSeenAt, showLabel = true }) {
         </span>
       )}
     </span>
+  );
+}
+
+// ── Citação de mensagem respondida (dentro do balão) ─────────
+function ReplyQuote({ replyTo, isMine }) {
+  if (!replyTo) return null;
+
+  const hasImage = replyTo.mediaUrl && !replyTo.mediaUrl.toLowerCase().endsWith('.pdf');
+  const hasGroup = replyTo.mediaGroup && (Array.isArray(replyTo.mediaGroup) ? replyTo.mediaGroup : JSON.parse(replyTo.mediaGroup)).length > 0;
+  const firstGroupUrl = hasGroup
+    ? (Array.isArray(replyTo.mediaGroup) ? replyTo.mediaGroup : JSON.parse(replyTo.mediaGroup))[0]?.url
+    : null;
+  const thumbUrl = firstGroupUrl || (hasImage ? replyTo.mediaUrl : null);
+
+  const borderCls = isMine ? 'border-white/40 bg-white/10' : 'border-gray-300 dark:border-gray-600 bg-gray-200/60 dark:bg-gray-600/50';
+  const nameCls   = isMine ? 'text-white/80' : 'text-primary-500 dark:text-primary-400';
+  const textCls   = isMine ? 'text-white/70' : 'text-gray-500 dark:text-gray-400';
+
+  return (
+    <div className={`flex gap-2 rounded-lg border-l-4 px-2 py-1.5 mb-1.5 ${borderCls}`}>
+      {thumbUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={thumbUrl} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+      )}
+      <div className="min-w-0">
+        <p className={`text-[11px] font-semibold truncate ${nameCls}`}>{replyTo.sender?.name || 'Usuário'}</p>
+        <p className={`text-[11px] truncate ${textCls}`}>
+          {replyTo.content || (hasGroup ? '📷 Galeria' : hasImage ? '📷 Imagem' : '📎 Arquivo')}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -226,7 +257,8 @@ function ChatContent() {
   const [loadingThread, setLoadingThread] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [lightbox, setLightbox] = useState(null); // { items: [{type,url}], index: number }
+  const [lightbox, setLightbox] = useState(null);     // { items: [{type,url}], index: number }
+  const [replyingTo, setReplyingTo] = useState(null); // msg sendo respondida
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
@@ -359,6 +391,9 @@ function ChatContent() {
 
   const clearAttach = () => setAttachFiles([]);
 
+  // Limpa reply ao trocar de conversa
+  useEffect(() => { setReplyingTo(null); }, [selectedUser]);
+
   // ── Envia mensagem (texto e/ou múltiplos anexos) ─────────────
   const sendMessage = async () => {
     const hasText = newMessage.trim();
@@ -368,13 +403,16 @@ function ChatContent() {
     setSending(true);
     const content = newMessage.trim();
     const filesToSend = [...attachFiles];
+    const replyRef = replyingTo;
     setNewMessage('');
     clearAttach();
+    setReplyingTo(null);
 
     try {
       const data = new FormData();
       data.append('receiverId', selectedUser.id);
       if (content) data.append('content', content);
+      if (replyRef) data.append('replyToId', replyRef.id);
       filesToSend.forEach(({ file }) => data.append('media', file));
 
       await api.post('/chat', data, { timeout: 60000 });
@@ -556,19 +594,33 @@ function ChatContent() {
                       const timeCls        = isMine ? 'text-primary-200 text-right' : 'text-gray-400';
 
                       return (
-                        <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`flex flex-col gap-1 max-w-[75%] ${alignCls}`}>
+                        <div key={msg.id} className={`group flex items-end gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
 
+                          {/* Botão responder — aparece no hover, lado esquerdo para mensagem própria */}
+                          {isMine && (
+                            <button
+                              onClick={() => setReplyingTo(msg)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0 mb-1"
+                              title="Responder"
+                            >
+                              <CornerUpLeft size={14} />
+                            </button>
+                          )}
+
+                          <div className={`flex flex-col gap-1 max-w-[75%] ${alignCls}`}>
                             <StoryReplyThumb previewUrl={msg.storyPreviewUrl} />
 
                             {/* ── Mídia visual (sem balão colorido) ── */}
                             {hasVisualMedia && (
                               <div className="relative">
+                                {/* Citação acima da mídia */}
+                                {msg.replyTo && (
+                                  <div className={`rounded-xl px-3 py-2 mb-0.5 ${isMine ? 'bg-primary-500/80' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                                    <ReplyQuote replyTo={msg.replyTo} isMine={isMine} />
+                                  </div>
+                                )}
                                 {group ? (
-                                  <MediaGroup
-                                    items={group}
-                                    onOpen={(i) => setLightbox({ items: group, index: i })}
-                                  />
+                                  <MediaGroup items={group} onOpen={(i) => setLightbox({ items: group, index: i })} />
                                 ) : (
                                   <MessageMedia
                                     mediaUrl={msg.mediaUrl}
@@ -577,10 +629,8 @@ function ChatContent() {
                                     onOpenImage={(items, idx) => setLightbox({ items, index: idx })}
                                   />
                                 )}
-
-                                {/* Timestamp sobre a mídia quando não há texto */}
                                 {!hasText && !hasPdf && (
-                                  <div className={`absolute bottom-1.5 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white backdrop-blur-sm`}>
+                                  <div className="absolute bottom-1.5 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white backdrop-blur-sm">
                                     {timestamp}
                                     {isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}
                                   </div>
@@ -588,47 +638,66 @@ function ChatContent() {
                               </div>
                             )}
 
-                            {/* ── PDF como item de balão ── */}
+                            {/* ── PDF ── */}
                             {hasPdf && (
                               <div className={`rounded-2xl px-4 py-2.5 ${bubbleCls}`}>
-                                <MessageMedia
-                                  mediaUrl={msg.mediaUrl}
-                                  mediaType={msg.mediaType}
-                                  isPdf={true}
-                                  onOpenImage={() => {}}
-                                />
-                                <p className={`text-[10px] mt-1 ${timeCls}`}>
-                                  {timestamp}
-                                  {isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}
-                                </p>
+                                {msg.replyTo && <ReplyQuote replyTo={msg.replyTo} isMine={isMine} />}
+                                <MessageMedia mediaUrl={msg.mediaUrl} mediaType={msg.mediaType} isPdf={true} onOpenImage={() => {}} />
+                                <p className={`text-[10px] mt-1 ${timeCls}`}>{timestamp}{isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}</p>
                               </div>
                             )}
 
-                            {/* ── Balão de texto (separado da mídia) ── */}
+                            {/* ── Balão de texto ── */}
                             {hasText && (
                               <div className={`rounded-2xl px-4 py-2.5 ${bubbleCls}`}>
+                                {msg.replyTo && !hasVisualMedia && <ReplyQuote replyTo={msg.replyTo} isMine={isMine} />}
                                 <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                                <p className={`text-[10px] mt-0.5 ${timeCls}`}>
-                                  {timestamp}
-                                  {isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}
-                                </p>
+                                <p className={`text-[10px] mt-0.5 ${timeCls}`}>{timestamp}{isMine && <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>}</p>
                               </div>
                             )}
 
-                            {/* ── Só texto puro (sem mídia) ── */}
+                            {/* ── Só timestamp (fallback) ── */}
                             {!hasVisualMedia && !hasPdf && !hasText && (
                               <div className={`rounded-2xl px-4 py-2.5 ${bubbleCls}`}>
                                 <p className={`text-[10px] ${timeCls}`}>{timestamp}</p>
                               </div>
                             )}
-
                           </div>
+
+                          {/* Botão responder — lado direito para mensagem do outro */}
+                          {!isMine && (
+                            <button
+                              onClick={() => setReplyingTo(msg)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0 mb-1"
+                              title="Responder"
+                            >
+                              <CornerUpLeft size={14} />
+                            </button>
+                          )}
                         </div>
                       );
                     })
                   )}
                   <div ref={messagesEnd} />
                 </div>
+
+                {/* Barra de resposta */}
+                {replyingTo && (
+                  <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="w-0.5 h-8 bg-primary-500 rounded-full flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-semibold text-primary-500">
+                        {replyingTo.senderId === user.id ? 'Você' : selectedName}
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                        {replyingTo.content || (replyingTo.mediaGroup ? '📷 Galeria' : replyingTo.mediaUrl ? '📷 Imagem' : '📎 Arquivo')}
+                      </p>
+                    </div>
+                    <button onClick={() => setReplyingTo(null)} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 flex-shrink-0">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
 
                 {/* Preview de múltiplos anexos */}
                 {attachFiles.length > 0 && (

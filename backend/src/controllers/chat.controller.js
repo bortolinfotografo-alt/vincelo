@@ -25,7 +25,7 @@ function resolveMediaType(file) {
 }
 
 async function sendMessage(req, res) {
-  const { receiverId, content, jobReference, storyPreviewUrl } = req.body;
+  const { receiverId, content, jobReference, storyPreviewUrl, replyToId } = req.body;
 
   if (!receiverId) return res.status(400).json({ message: 'Destinatario e obrigatorio' });
   if (receiverId === req.user.id) return res.status(400).json({ message: 'Voce nao pode enviar mensagem para si mesmo' });
@@ -60,6 +60,21 @@ async function sendMessage(req, res) {
     return res.status(400).json({ message: 'Mensagem deve ter texto ou arquivo' });
   }
 
+  // Valida que a mensagem referenciada pertence à conversa
+  let validReplyToId = null;
+  if (replyToId) {
+    const ref = await prisma.chatMessage.findFirst({
+      where: {
+        id: replyToId,
+        OR: [
+          { senderId: req.user.id, receiverId },
+          { senderId: receiverId, receiverId: req.user.id },
+        ],
+      },
+    });
+    if (ref) validReplyToId = ref.id;
+  }
+
   const message = await prisma.chatMessage.create({
     data: {
       senderId: req.user.id,
@@ -70,9 +85,16 @@ async function sendMessage(req, res) {
       mediaGroup,
       storyPreviewUrl: storyPreviewUrl || null,
       jobReference:    jobReference    || null,
+      replyToId:       validReplyToId,
     },
     include: {
       sender: { select: { id: true, name: true, avatar: true } },
+      replyTo: {
+        select: {
+          id: true, content: true, mediaUrl: true, mediaGroup: true, mediaType: true,
+          sender: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 
@@ -116,6 +138,14 @@ async function getConversation(req, res) {
       orderBy: { createdAt: 'desc' },
       take: limit,
       skip,
+      include: {
+        replyTo: {
+          select: {
+            id: true, content: true, mediaUrl: true, mediaGroup: true, mediaType: true,
+            sender: { select: { id: true, name: true } },
+          },
+        },
+      },
     }),
     prisma.chatMessage.count({
       where: {

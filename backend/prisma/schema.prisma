@@ -171,19 +171,22 @@ model Proposal {
 }
 
 model ChatMessage {
-  id              String     @id @default(uuid())
+  id              String        @id @default(uuid())
   senderId        String
   receiverId      String
   jobReference    String?
   content         String?
-  isRead          Boolean    @default(false)
-  createdAt       DateTime   @default(now())
+  isRead          Boolean       @default(false)
+  createdAt       DateTime      @default(now())
   mediaType       MediaType?
   mediaUrl        String?
   mediaGroup      Json?
   storyPreviewUrl String?
-  receiver        User       @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-  sender          User       @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  replyToId       String?
+  replyTo         ChatMessage?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies         ChatMessage[] @relation("MessageReplies")
+  receiver        User          @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender          User          @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([senderId, receiverId])
   @@index([createdAt])
