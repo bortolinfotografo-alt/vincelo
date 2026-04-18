@@ -9,42 +9,30 @@ const rateLimit = require('express-rate-limit');
  * Limiter para rotas de autenticação (login, registro)
  * 5 requisições por janela de 15 minutos
  */
+// validate.xForwardedForHeader=false: evita erro ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// no Railway (proxy reverso que sempre injeta X-Forwarded-For).
+// O IP real é resolvido via trust proxy configurado no Express (server.js).
+const SHARED = { validate: { xForwardedForHeader: false }, standardHeaders: true, legacyHeaders: false };
+
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
+  ...SHARED,
+  windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'development' ? 20 : 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    message: 'Muitas tentativas de autenticação. Tente novamente após 15 minutos.',
-  },
+  message: { message: 'Muitas tentativas de autenticação. Tente novamente após 15 minutos.' },
 });
 
-/**
- * Limiter geral para todas as rotas da API
- * 100 requisições por janela de 15 minutos
- */
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
+  ...SHARED,
+  windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'development' ? 1000 : 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    message: 'Muitas requisições. Tente novamente mais tarde.',
-  },
+  message: { message: 'Muitas requisições. Tente novamente mais tarde.' },
 });
 
-/**
- * Limiter estrito para rotas sensíveis (reset de senha)
- * 10 requisições por janela de 15 minutos
- */
 const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
+  ...SHARED,
+  windowMs: 15 * 60 * 1000,
   max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    message: 'Muitas requisições a esta rota. Tente novamente após 15 minutos.',
-  },
+  message: { message: 'Muitas requisições a esta rota. Tente novamente após 15 minutos.' },
 });
 
 module.exports = {

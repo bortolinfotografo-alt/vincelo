@@ -43,11 +43,8 @@ function corsConfig() {
 
   return cors({
     origin: function (origin, callback) {
-      // Em produção, rejeita requests sem origem (CSRF via curl/servidor sem browser)
-      if (!origin) {
-        if (isDevelopment) return callback(null, true);
-        return callback(new Error('Origem ausente nao permitida'));
-      }
+      // Permite requests sem Origin: vêm do proxy Next.js/Vercel → Railway (server-to-server)
+      if (!origin) return callback(null, true);
 
       if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
         return callback(null, true);
